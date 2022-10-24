@@ -1,224 +1,256 @@
 package ru.practicum.shareit.item.controller;
 
-import org.junit.jupiter.api.BeforeAll;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.*;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.user.dto.UserDto;
 
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@AutoConfigureMockMvc
 public class ItemControllerTest {
 
     @LocalServerPort
     private int port;
-
-    private static final TestRestTemplate template = new TestRestTemplate();
-
-    /**
-     * Стандартная JDK-библиотека не поддерживает PATCH-запросы.
-     * Для работы соответствующих тестов требуется ее замена.
-     */
-    @BeforeAll
-    public static void refreshAndSetPatchCompliantTemplate() {
-        template.getRestTemplate().setRequestFactory(new HttpComponentsClientHttpRequestFactory());
-    }
+    @Autowired
+    private MockMvc mvc;
+    @Autowired
+    private ObjectMapper mapper;
 
     @Test
-    public void addItemTest() {
+    public void addItemTest() throws Exception {
         addDefaultUser();
         ItemDto itemDto = makeDefaultItemDto();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
-        ResponseEntity<ItemDto> response = template.postForEntity(
-                getDefaultUri(),
-                new HttpEntity<>(itemDto, headers),
-                ItemDto.class
-        );
+        MockHttpServletResponse response = mvc.perform(
+                        post(getDefaultUri())
+                                .headers(headers)
+                                .content(mapper.writeValueAsString(itemDto))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
 
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(itemDto, response.getBody());
+        assertEquals(HttpStatus.CREATED.value(), response.getStatus());
+        assertEquals(itemDto, mapper.readValue(response.getContentAsString(), ItemDto.class));
     }
 
     @Test
-    public void shouldThrowExceptionForAddingItemWithAbsentOwner() {
+    public void shouldThrowExceptionForAddingItemWithAbsentOwner() throws Exception {
         ItemDto itemDto = makeDefaultItemDto();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
-        ResponseEntity<ItemDto> response = template.postForEntity(
-                getDefaultUri(),
-                new HttpEntity<>(itemDto, headers),
-                ItemDto.class
-        );
+        MockHttpServletResponse response = mvc.perform(
+                        post(getDefaultUri())
+                                .headers(headers)
+                                .content(mapper.writeValueAsString(itemDto))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
 
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
     }
 
     @Test
-    public void getItemTest() {
+    public void getItemTest() throws Exception {
         addDefaultUser();
         ItemDto itemDto = makeDefaultItemDto();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
-        template.postForEntity(
-                getDefaultUri(),
-                new HttpEntity<>(itemDto, headers),
-                ItemDto.class
-        );
+        mvc.perform(
+                post(getDefaultUri())
+                        .headers(headers)
+                        .content(mapper.writeValueAsString(itemDto))
+                        .contentType(MediaType.APPLICATION_JSON));
 
-        ResponseEntity<ItemDto> response = template.exchange(
-                getDefaultUri() + "/1",
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                ItemDto.class
-        );
+        MockHttpServletResponse response = mvc.perform(
+                        get(getDefaultUri() + "/1")
+                                .headers(headers)
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(itemDto, response.getBody());
+        assertEquals(HttpStatus.OK.value(), response.getStatus());
+        assertEquals(itemDto, mapper.readValue(response.getContentAsString(), ItemDto.class));
     }
 
     @Test
-    public void shouldThrowExceptionForNotFoundItem() {
+    public void shouldThrowExceptionForNotFoundItem() throws Exception {
         addDefaultUser();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
-        ResponseEntity<ItemDto> response = template.exchange(
-                getDefaultUri() + "/1",
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                ItemDto.class
-        );
+        MockHttpServletResponse response = mvc.perform(
+                        get(getDefaultUri() + "/1")
+                                .headers(headers)
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
 
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
     }
 
     @Test
-    public void searchAvailableItemsTest() {
+    public void searchAvailableItemsTest() throws Exception {
         addDefaultUser();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
-        ItemDto item1 = makeCustomItemDto(1, "DEBUGGER", "Some item descr", true);
-        template.postForEntity(
-                getDefaultUri(),
-                new HttpEntity<>(item1, headers),
-                ItemDto.class
-        );
+        ItemDto item1 = makeDefaultItemDto();
+        item1.setName("DEBUGGER");
+        item1.setDescription("Some item descr");
+        item1.setAvailable(true);
 
-        ItemDto item2 = makeCustomItemDto(2, "Some item", "DeBuGgER again", true);
-        template.postForEntity(
-                getDefaultUri(),
-                new HttpEntity<>(item2, headers),
-                ItemDto.class
-        );
+        mvc.perform(
+                post(getDefaultUri())
+                        .headers(headers)
+                        .content(mapper.writeValueAsString(item1))
+                        .contentType(MediaType.APPLICATION_JSON));
 
-        ItemDto item3 = makeCustomItemDto(3, "Not to be found", "Not debugger", false);
-        template.postForEntity(
-                getDefaultUri(),
-                new HttpEntity<>(item3, headers),
-                ItemDto.class
-        );
+        ItemDto item2 = makeDefaultItemDto();
+        item2.setId(2L);
+        item2.setName("Some item");
+        item2.setDescription("DeBuGgER again");
+        item2.setAvailable(true);
 
-        ResponseEntity<Collection<ItemDto>> response = template.exchange(
-                getDefaultUri() + "/search?text={text}",
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                new ParameterizedTypeReference<>() {},
-                Map.of("text", "debUgger")
-        );
-        assertEquals(List.of(item1, item2), response.getBody());
+        mvc.perform(
+                post(getDefaultUri())
+                        .headers(headers)
+                        .content(mapper.writeValueAsString(item2))
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        ItemDto item3 = makeDefaultItemDto();
+        item3.setId(3L);
+        item3.setName("Not to be found");
+        item3.setDescription("Not debugger");
+        item3.setAvailable(false);
+
+        mvc.perform(
+                post(getDefaultUri())
+                        .headers(headers)
+                        .content(mapper.writeValueAsString(item3))
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        MockHttpServletResponse response = mvc.perform(
+                        get(getDefaultUri() + "/search")
+                                .headers(headers)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .param("text", "debUgger"))
+                .andReturn().getResponse();
+
+        assertEquals(List.of(item1, item2),
+                mapper.readValue(response.getContentAsString(), new TypeReference<List<ItemDto>>() {
+                }));
     }
 
     @Test
-    public void updateItemTest() {
+    public void updateItemTest() throws Exception {
         addDefaultUser();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
-        ItemDto item1 = makeCustomItemDto(1, "New item", "Some item descr", false);
-        template.postForEntity(
-                getDefaultUri(),
-                new HttpEntity<>(item1, headers),
-                ItemDto.class
-        );
+        ItemDto item1 = makeDefaultItemDto();
+        item1.setName("New item");
+        item1.setDescription("Some item descr");
+        item1.setAvailable(false);
 
-        item1 = makeCustomItemDto(1, null, "New item descr", true);
-        ResponseEntity<ItemDto> response = template.exchange(
-                getDefaultUri() + "/1",
-                HttpMethod.PATCH,
-                new HttpEntity<>(item1, headers),
-                ItemDto.class
-        );
+        mvc.perform(
+                post(getDefaultUri())
+                        .headers(headers)
+                        .content(mapper.writeValueAsString(item1))
+                        .contentType(MediaType.APPLICATION_JSON));
 
-        ItemDto resultItem = makeCustomItemDto(1, "New item", "New item descr", true);
+        item1.setName(null);
+        item1.setDescription("New item descr");
+        item1.setAvailable(true);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(resultItem, response.getBody());
+        MockHttpServletResponse response = mvc.perform(
+                        patch(getDefaultUri() + "/1")
+                                .headers(headers)
+                                .content(mapper.writeValueAsString(item1))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
+
+        item1.setName("New item");
+
+        assertEquals(HttpStatus.OK.value(), response.getStatus());
+        assertEquals(item1, mapper.readValue(response.getContentAsString(), ItemDto.class));
     }
 
     @Test
-    public void shouldThrowExceptionForPatchRequestWithNullOnlyValues() {
+    public void shouldThrowExceptionForPatchRequestWithNullOnlyValues() throws Exception {
         addDefaultUser();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
-        ItemDto item1 = makeCustomItemDto(1, "New item", "Some item descr", false);
-        template.postForEntity(
-                getDefaultUri(),
-                new HttpEntity<>(item1, headers),
-                ItemDto.class
-        );
+        ItemDto item1 = makeDefaultItemDto();
 
-        item1 = makeCustomItemDto(1, null, null, null);
-        ResponseEntity<ItemDto> response = template.exchange(
-                getDefaultUri() + "/1",
-                HttpMethod.PATCH,
-                new HttpEntity<>(item1, headers),
-                ItemDto.class
-        );
+        mvc.perform(
+                post(getDefaultUri())
+                        .headers(headers)
+                        .content(mapper.writeValueAsString(item1))
+                        .contentType(MediaType.APPLICATION_JSON));
 
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        item1.setName(null);
+        item1.setDescription(null);
+        item1.setAvailable(null);
+
+        MockHttpServletResponse response = mvc.perform(
+                        patch(getDefaultUri() + "/1")
+                                .headers(headers)
+                                .content(mapper.writeValueAsString(item1))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), response.getStatus());
     }
 
     @Test
-    public void shouldThrowExceptionForWrongOwnerUpdatingItem() {
+    public void shouldThrowExceptionForWrongOwnerUpdatingItem() throws Exception {
         addDefaultUser();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
-        ItemDto item1 = makeCustomItemDto(1, "New item", "Some item descr", false);
-        template.postForEntity(
-                getDefaultUri(),
-                new HttpEntity<>(item1, headers),
-                ItemDto.class
-        );
+        ItemDto item1 = makeDefaultItemDto();
+        item1.setName("New item");
+        item1.setDescription("Some item descr");
+        item1.setAvailable(false);
 
-        item1 = makeCustomItemDto(1, null, "New item descr", true);
+        mvc.perform(
+                post(getDefaultUri())
+                        .headers(headers)
+                        .content(mapper.writeValueAsString(item1))
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        item1.setName(null);
+        item1.setDescription("New item descr");
+        item1.setAvailable(true);
+
         headers.set("X-Sharer-User-Id", "2");
-        ResponseEntity<ItemDto> response = template.exchange(
-                getDefaultUri() + "/1",
-                HttpMethod.PATCH,
-                new HttpEntity<>(item1, headers),
-                ItemDto.class
-        );
 
-        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        MockHttpServletResponse response = mvc.perform(
+                        patch(getDefaultUri() + "/1")
+                                .headers(headers)
+                                .content(mapper.writeValueAsString(item1))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.FORBIDDEN.value(), response.getStatus());
     }
 
     private String getDefaultUri() {
@@ -234,22 +266,15 @@ public class ItemControllerTest {
                 .build();
     }
 
-    private ItemDto makeCustomItemDto(long id, String name, String description, Boolean available) {
-        return ItemDto.builder()
-                .id(id)
-                .name(name)
-                .description(description)
-                .available(available)
+    private void addDefaultUser() throws Exception {
+        UserDto userDto = UserDto.builder()
+                .name("Tom")
+                .email("tomsmail@mail.ru")
                 .build();
-    }
 
-    private void addDefaultUser() {
-        template.postForObject(String.format("http://localhost:%d/users", port),
-                UserDto.builder()
-                        .name("Tom")
-                        .email("tomsmail@mail.ru")
-                        .build(),
-                UserDto.class
-        );
+        mvc.perform(
+                post(String.format("http://localhost:%d/users", port))
+                        .content(mapper.writeValueAsString(userDto))
+                        .contentType(MediaType.APPLICATION_JSON));
     }
 }

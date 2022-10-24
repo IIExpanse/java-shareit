@@ -1,6 +1,6 @@
 package ru.practicum.shareit.user.controller;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,11 +27,12 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping(path = "/users")
 @Slf4j
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Validated
 public class UserController {
 
     private final UserService service;
+    private final UserMapper mapper;
 
     /**
      * Добавление нового пользователя.
@@ -43,9 +44,9 @@ public class UserController {
     @PostMapping
     @Validated(value = UserValidationGroup.FullValidation.class)
     ResponseEntity<UserDto> addUser(@RequestBody @Valid UserDto userDto) {
-        User user = UserMapper.mapToModel(userDto);
+        User user = mapper.mapToModel(userDto);
         ResponseEntity<UserDto> response = new ResponseEntity<>(
-                UserMapper.mapToDto(service.addUser(user)), HttpStatus.CREATED);
+                mapper.mapToDto(service.addUser(user)), HttpStatus.CREATED);
 
         log.debug("Добавлен новый пользователь: {}", response.getBody());
         return response;
@@ -60,7 +61,7 @@ public class UserController {
      */
     @GetMapping(path = "/{id}")
     ResponseEntity<UserDto> getUser(@PathVariable long id) {
-        return ResponseEntity.ok(UserMapper.mapToDto(service.getUser(id)));
+        return ResponseEntity.ok(mapper.mapToDto(service.getUser(id)));
     }
 
     /**
@@ -71,7 +72,7 @@ public class UserController {
     @GetMapping
     ResponseEntity<Collection<UserDto>> getUsers() {
         return ResponseEntity.ok(service.getUsers().stream()
-                .map(UserMapper::mapToDto)
+                .map(mapper::mapToDto)
                 .collect(Collectors.toList()));
     }
 
@@ -113,10 +114,10 @@ public class UserController {
             throw new EmptyUserPatchRequestException("Ошибка обновления пользователя: в запросе все поля равны null.");
         }
 
-        user = UserMapper.mapToModel(userDto);
+        user = mapper.mapToModel(userDto);
         user.setId(id);
         response = ResponseEntity.ok(
-                UserMapper.mapToDto(service.updateUser(user, targetFields)));
+                mapper.mapToDto(service.updateUser(user, targetFields)));
 
         log.debug("Обновлен пользователь: {}", response.getBody());
         return response;

@@ -1,6 +1,6 @@
 package ru.practicum.shareit.item.controller;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,20 +17,18 @@ import ru.practicum.shareit.item.service.UpdatedItemFields;
 import ru.practicum.shareit.user.exception.UserNotFoundException;
 
 import javax.validation.Valid;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Validated
 @RestController
 @RequestMapping(path = "/items")
 @Slf4j
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class ItemController {
 
     private final ItemService service;
+    private final ItemMapper mapper;
 
     /**
      * Добавление новой вещи.
@@ -43,10 +41,10 @@ public class ItemController {
     @PostMapping
     public ResponseEntity<ItemDto> addItem(@RequestHeader(name = "X-Sharer-User-Id") long ownerId,
                                            @RequestBody @Valid ItemDto itemDto) {
-        Item item = ItemMapper.mapToModel(itemDto);
+        Item item = mapper.mapToModel(itemDto);
         item.setOwnerId(ownerId);
         ResponseEntity<ItemDto> response = new ResponseEntity<>(
-                ItemMapper.mapToDto(service.addItem(item)), HttpStatus.CREATED);
+                mapper.mapToDto(service.addItem(item)), HttpStatus.CREATED);
 
         log.debug("Добавлена новая вещь: {}", response.getBody());
         return response;
@@ -61,7 +59,7 @@ public class ItemController {
      */
     @GetMapping(path = "/{id}")
     public ResponseEntity<ItemDto> getItem(@PathVariable long id) {
-        return ResponseEntity.ok(ItemMapper.mapToDto(service.getItem(id)));
+        return ResponseEntity.ok(mapper.mapToDto(service.getItem(id)));
     }
 
     /**
@@ -73,7 +71,7 @@ public class ItemController {
     @GetMapping
     public ResponseEntity<Collection<ItemDto>> getOwnerItems(@RequestHeader(name = "X-Sharer-User-Id") long ownerId) {
         Collection<ItemDto> collection = service.getOwnerItems(ownerId).stream()
-                .map(ItemMapper::mapToDto)
+                .map(mapper::mapToDto)
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(collection);
@@ -90,7 +88,7 @@ public class ItemController {
     public ResponseEntity<Collection<ItemDto>> searchAvailableItems(@RequestParam String text) {
         if (text.trim().length() > 0) {
             return ResponseEntity.ok(service.searchAvailableItems(text).stream()
-                    .map(ItemMapper::mapToDto)
+                    .map(mapper::mapToDto)
                     .collect(Collectors.toList()));
 
         } else return ResponseEntity.ok(List.of());
@@ -145,11 +143,11 @@ public class ItemController {
             throw new EmptyItemPatchRequestException("Ошибка обновления вещи: в запросе все поля равны null.");
         }
 
-        item = ItemMapper.mapToModel(itemDto);
+        item = mapper.mapToModel(itemDto);
         item.setItemId(itemId);
         item.setOwnerId(ownerId);
         response = ResponseEntity.ok(
-                ItemMapper.mapToDto(service.updateItem(item, targetFields)));
+                mapper.mapToDto(service.updateItem(item, targetFields)));
 
         log.debug("Обновлена вещь: {}", response.getBody());
         return response;

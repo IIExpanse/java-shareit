@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class InMemoryUserRepositoryTest {
 
-    UserRepository repository;
+    private UserRepository repository;
 
     @Test
     public void addAndGetUserTest() {

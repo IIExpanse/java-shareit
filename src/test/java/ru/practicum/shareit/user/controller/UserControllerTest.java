@@ -1,228 +1,216 @@
 package ru.practicum.shareit.user.controller;
 
-import org.junit.jupiter.api.BeforeAll;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.shareit.user.dto.UserDto;
 
-import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@AutoConfigureMockMvc
 public class UserControllerTest {
 
     @LocalServerPort
     private int port;
-
-    private static final TestRestTemplate template = new TestRestTemplate();
-
-    /**
-     * Стандартная JDK-библиотека не поддерживает PATCH-запросы.
-     * Для работы соответствующих тестов требуется ее замена.
-     */
-    @BeforeAll
-    public static void refreshAndSetPatchCompliantTemplate() {
-        template.getRestTemplate().setRequestFactory(new HttpComponentsClientHttpRequestFactory());
-    }
+    @Autowired
+    private MockMvc mvc;
+    @Autowired
+    private ObjectMapper mapper;
 
     @Test
-    public void addUserTest() {
+    public void addUserTest() throws Exception {
         UserDto userDto = makeDefaultUserDto();
 
-        ResponseEntity<UserDto> response = template.postForEntity(
-                getDefaultUri(),
-                userDto,
-                UserDto.class
-        );
+        MockHttpServletResponse response = mvc.perform(
+                        post(getDefaultUri())
+                                .content(mapper.writeValueAsString(userDto))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
 
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(userDto, response.getBody());
+        assertEquals(HttpStatus.CREATED.value(), response.getStatus());
+        assertEquals(userDto, mapper.readValue(response.getContentAsString(), UserDto.class));
     }
 
     @Test
-    public void shouldNotAddUserWithDuplicateEmail() {
-        template.postForEntity(
-                getDefaultUri(),
-                makeDefaultUserDto(),
-                UserDto.class
-        );
-
-        ResponseEntity<UserDto> response = template.postForEntity(
-                getDefaultUri(),
-                makeDefaultUserDto(),
-                UserDto.class
-        );
-
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-    }
-
-    @Test
-    public void getUserTest() {
+    public void shouldNotAddUserWithDuplicateEmail() throws Exception {
         UserDto userDto = makeDefaultUserDto();
-        template.postForEntity(
-                getDefaultUri(),
-                userDto,
-                UserDto.class
-        );
 
-        ResponseEntity<UserDto> response = template.getForEntity(
-                getDefaultUri() + "/1",
-                UserDto.class
-        );
+        mvc.perform(post(getDefaultUri())
+                .content(mapper.writeValueAsString(userDto))
+                .contentType(MediaType.APPLICATION_JSON));
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(userDto, response.getBody());
+        MockHttpServletResponse response = mvc.perform(
+                        post(getDefaultUri())
+                                .content(mapper.writeValueAsString(userDto))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.CONFLICT.value(), response.getStatus());
     }
 
     @Test
-    public void shouldThrowExceptionForNotFoundUser() {
-        ResponseEntity<UserDto> response = template.getForEntity(
-                getDefaultUri() + "/1",
-                UserDto.class
-        );
+    public void getUserTest() throws Exception {
+        UserDto userDto = makeDefaultUserDto();
 
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        mvc.perform(post(getDefaultUri())
+                .content(mapper.writeValueAsString(userDto))
+                .contentType(MediaType.APPLICATION_JSON));
+
+        MockHttpServletResponse response = mvc.perform(
+                        get(getDefaultUri() + "/1"))
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.OK.value(), response.getStatus());
+        assertEquals(userDto, mapper.readValue(response.getContentAsString(), UserDto.class));
     }
 
     @Test
-    public void getUsersTest() {
+    public void shouldThrowExceptionForNotFoundUser() throws Exception {
+
+        MockHttpServletResponse response = mvc.perform(
+                        get(getDefaultUri() + "/1"))
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
+    }
+
+    @Test
+    public void getUsersTest() throws Exception {
         UserDto userDto1 = makeDefaultUserDto();
-        template.postForEntity(
-                getDefaultUri(),
-                userDto1,
-                UserDto.class
-        );
 
-        UserDto userDto2 = makeCustomUserDto(2, "Sam", "samsmail@mail.ru");
-        template.postForEntity(
-                getDefaultUri(),
-                userDto2,
-                UserDto.class
-        );
+        mvc.perform(post(getDefaultUri())
+                .content(mapper.writeValueAsString(userDto1))
+                .contentType(MediaType.APPLICATION_JSON));
 
-        ResponseEntity<Collection<UserDto>> response = template.exchange(
-                getDefaultUri(),
-                HttpMethod.GET,
-                new HttpEntity<>(null),
-                new ParameterizedTypeReference<>() {}
-        );
+        UserDto userDto2 = makeDefaultUserDto();
+        userDto2.setId(2L);
+        userDto2.setName("Sam");
+        userDto2.setEmail("samsmail@mail.ru");
 
-        assertEquals(List.of(userDto1, userDto2), response.getBody());
+        mvc.perform(post(getDefaultUri())
+                .content(mapper.writeValueAsString(userDto2))
+                .contentType(MediaType.APPLICATION_JSON));
+
+        MockHttpServletResponse response = mvc.perform(
+                        get(getDefaultUri())
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
+
+        assertEquals(List.of(userDto1, userDto2),
+                mapper.readValue(response.getContentAsString(), new TypeReference<List<UserDto>>() {
+                }));
     }
 
     @Test
-    public void updateUserTest() {
-        UserDto userDto = makeCustomUserDto(1, "Sam", "samsmail@yandex.ru");
-        template.postForEntity(
-                getDefaultUri(),
-                userDto,
-                UserDto.class
-        );
+    public void updateUserTest() throws Exception {
+        UserDto userDto = makeDefaultUserDto();
+        userDto.setName("Sam");
+        userDto.setEmail("samsmail@yandex.ru");
 
-        userDto = makeCustomUserDto(1, null, "newsamsmail@yandex.ru");
-        ResponseEntity<UserDto> response = template.exchange(
-                getDefaultUri() + "/1",
-                HttpMethod.PATCH,
-                new HttpEntity<>(userDto),
-                UserDto.class
-        );
+        mvc.perform(post(getDefaultUri())
+                .content(mapper.writeValueAsString(userDto))
+                .contentType(MediaType.APPLICATION_JSON));
 
-        UserDto resultUserDto = makeCustomUserDto(1, "Sam", "newsamsmail@yandex.ru");
+        userDto.setName(null);
+        userDto.setEmail("newsamsmail@yandex.ru");
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(resultUserDto, response.getBody());
+        MockHttpServletResponse response = mvc.perform(
+                        patch(getDefaultUri() + "/1")
+                                .content(mapper.writeValueAsString(userDto))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
+
+        userDto.setName("Sam");
+
+        assertEquals(HttpStatus.OK.value(), response.getStatus());
+        assertEquals(userDto, mapper.readValue(response.getContentAsString(), UserDto.class));
     }
 
     @Test
-    public void shouldThrowExceptionForEmptyPatchRequest() {
-        UserDto userDto = makeCustomUserDto(1, "Sam", "samsmail@yandex.ru");
-        template.postForEntity(
-                getDefaultUri(),
-                userDto,
-                UserDto.class
-        );
+    public void shouldThrowExceptionForEmptyPatchRequest() throws Exception {
+        UserDto userDto = makeDefaultUserDto();
 
-        userDto = makeCustomUserDto(1, null, null);
-        ResponseEntity<UserDto> response = template.exchange(
-                getDefaultUri() + "/1",
-                HttpMethod.PATCH,
-                new HttpEntity<>(userDto),
-                UserDto.class
-        );
+        mvc.perform(post(getDefaultUri())
+                .content(mapper.writeValueAsString(userDto))
+                .contentType(MediaType.APPLICATION_JSON));
 
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        userDto.setName(null);
+        userDto.setEmail(null);
+
+        MockHttpServletResponse response = mvc.perform(
+                        patch(getDefaultUri() + "/1")
+                                .content(mapper.writeValueAsString(userDto))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), response.getStatus());
     }
 
     @Test
-    public void shouldThrowExceptionForPatchingWithDuplicateEmail() {
-        UserDto userDto = makeCustomUserDto(1, "Sam", "samsmail@yandex.ru");
-        template.postForEntity(
-                getDefaultUri(),
-                userDto,
-                UserDto.class
-        );
+    public void shouldThrowExceptionForPatchingWithDuplicateEmail() throws Exception {
+        UserDto userDto = makeDefaultUserDto();
+        userDto.setName("Sam");
+        userDto.setEmail("samsmail@yandex.ru");
 
-        userDto = makeCustomUserDto(1, null, "samsmail@yandex.ru");
-        ResponseEntity<UserDto> response = template.exchange(
-                getDefaultUri() + "/1",
-                HttpMethod.PATCH,
-                new HttpEntity<>(userDto),
-                UserDto.class
-        );
+        mvc.perform(post(getDefaultUri())
+                .content(mapper.writeValueAsString(userDto))
+                .contentType(MediaType.APPLICATION_JSON));
 
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        userDto.setName(null);
+
+        MockHttpServletResponse response = mvc.perform(
+                        patch(getDefaultUri() + "/1")
+                                .content(mapper.writeValueAsString(userDto))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.CONFLICT.value(), response.getStatus());
     }
 
     @Test
-    public void deleteUserTest() {
-        template.postForEntity(
-                getDefaultUri(),
-                makeDefaultUserDto(),
-                UserDto.class
-        );
+    public void deleteUserTest() throws Exception {
 
-        ResponseEntity<String> deleteResponse = template.exchange(
-                getDefaultUri() + "/1",
-                HttpMethod.DELETE,
-                new HttpEntity<>(null),
-                String.class
-        );
+        mvc.perform(post(getDefaultUri())
+                .content(mapper.writeValueAsString(makeDefaultUserDto()))
+                .contentType(MediaType.APPLICATION_JSON));
 
-        ResponseEntity<Collection<UserDto>> listResponse = template.exchange(
-                getDefaultUri(),
-                HttpMethod.GET,
-                new HttpEntity<>(null),
-                new ParameterizedTypeReference<>() {}
-        );
+        MockHttpServletResponse deleteResponse = mvc.perform(
+                        delete(getDefaultUri() + "/1"))
+                .andReturn().getResponse();
 
-        assertEquals(HttpStatus.OK, deleteResponse.getStatusCode());
-        assertTrue(Objects.requireNonNull(listResponse.getBody()).isEmpty());
+        MockHttpServletResponse listResponse = mvc.perform(
+                        get(getDefaultUri()))
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.OK.value(), deleteResponse.getStatus());
+        assertTrue(mapper.readValue(listResponse.getContentAsString(),
+                new TypeReference<List<UserDto>>() {
+                }).isEmpty());
     }
 
     @Test
-    public void shouldThrowExceptionForDeletingAbsentUser() {
-        ResponseEntity<String> response = template.exchange(
-                getDefaultUri() + "/1",
-                HttpMethod.DELETE,
-                new HttpEntity<>(null),
-                String.class
-        );
+    public void shouldThrowExceptionForDeletingAbsentUser() throws Exception {
 
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        MockHttpServletResponse response = mvc.perform(
+                        delete(getDefaultUri() + "/1"))
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatus());
     }
 
     private String getDefaultUri() {
@@ -234,14 +222,6 @@ public class UserControllerTest {
                 .id(1L)
                 .name("Tom")
                 .email("tomsmail@mail.ru")
-                .build();
-    }
-
-    private UserDto makeCustomUserDto(long id, String name, String email) {
-        return UserDto.builder()
-                .id(id)
-                .name(name)
-                .email(email)
                 .build();
     }
 }

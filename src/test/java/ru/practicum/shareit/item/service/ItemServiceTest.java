@@ -14,7 +14,7 @@ import ru.practicum.shareit.user.exception.UserNotFoundException;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class ItemServiceTest {
 
-    ItemService service;
+    private ItemService service;
 
     @Test
     public void shouldThrowExceptionForAddingItemWithAbsentOwner() {
