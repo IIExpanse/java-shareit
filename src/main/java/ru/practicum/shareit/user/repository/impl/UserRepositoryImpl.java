@@ -16,7 +16,7 @@ public class UserRepositoryImpl implements UserRepositoryCustom {
 
     private final UserRepository userRepository;
 
-    public UserRepositoryImpl(@Lazy UserRepository userRepository){
+    public UserRepositoryImpl(@Lazy UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
