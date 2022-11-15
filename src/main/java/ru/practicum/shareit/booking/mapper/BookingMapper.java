@@ -12,8 +12,8 @@ import ru.practicum.shareit.user.model.User;
 
 @Mapper(componentModel = "spring")
 public interface BookingMapper {
-    @Mapping(source = "BookingDtoRequest.start", target = "startTime")
-    @Mapping(source = "BookingDtoRequest.end", target = "endTime")
+    @Mapping(source = "bookingDtoRequest.start", target = "startTime")
+    @Mapping(source = "bookingDtoRequest.end", target = "endTime")
     @Mapping(source = "booker", target = "booker")
     @Mapping(source = "item", target = "item")
     @Mapping(target = "approved", ignore = true)
