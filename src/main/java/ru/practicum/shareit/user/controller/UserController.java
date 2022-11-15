@@ -45,6 +45,7 @@ public class UserController {
     @Validated(value = UserValidationGroup.FullValidation.class)
     ResponseEntity<UserDto> addUser(@RequestBody @Valid UserDto userDto) {
         User user = mapper.mapToModel(userDto);
+        user.setId(null);
         ResponseEntity<UserDto> response = new ResponseEntity<>(
                 mapper.mapToDto(service.addUser(user)), HttpStatus.CREATED);
 

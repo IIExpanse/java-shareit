@@ -13,6 +13,8 @@ public interface UserService {
 
     Collection<User> getUsers();
 
+    boolean userExists(long userId);
+
     User updateUser(User user, Map<UpdatedUserFields, Boolean> targetFields);
 
     void deleteUser(long id);

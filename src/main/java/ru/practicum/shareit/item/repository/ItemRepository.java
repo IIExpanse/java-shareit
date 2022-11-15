@@ -1,22 +1,28 @@
 package ru.practicum.shareit.item.repository;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.item.service.UpdatedItemFields;
+import ru.practicum.shareit.user.model.User;
 
 import java.util.Collection;
-import java.util.Map;
 
-public interface ItemRepository {
+@Repository
+public interface ItemRepository extends JpaRepository<Item, Long>, ItemRepositoryCustom {
 
-    Item addItem(Item item);
+    boolean existsItemByIdAndAvailableIsTrue(long itemId);
 
-    Item getItem(long id);
+    Collection<Item> findAllByOwnerId(Long id);
 
-    Collection<Item> getOwnerItems(long ownerId);
+    @Query(value = "SELECT i FROM Item i " +
+            "WHERE (LOWER(i.name) LIKE CONCAT('%', LOWER(?1), '%')" +
+            "OR LOWER(i.description) LIKE CONCAT('%', LOWER(?1), '%'))" +
+            " AND i.available = TRUE"
+    )
+    Collection<Item> searchAvailableItemsByNameAndDescription(String query);
 
-    Item updateItem(Item item, Map<UpdatedItemFields, Boolean> targetFields);
-
-    Collection<Item> searchAvailableItems(String query);
-
-    void deleteUserItems(long id);
+    @Transactional
+    void deleteAllByOwner(User owner);
 }

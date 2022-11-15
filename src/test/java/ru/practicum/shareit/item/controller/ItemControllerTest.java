@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.user.dto.UserDto;
@@ -22,7 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestDatabase
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 @AutoConfigureMockMvc
 public class ItemControllerTest {
 
@@ -48,6 +52,7 @@ public class ItemControllerTest {
                 .andReturn().getResponse();
 
         assertEquals(HttpStatus.CREATED.value(), response.getStatus());
+        itemDto.setComments(null);
         assertEquals(itemDto, mapper.readValue(response.getContentAsString(), ItemDto.class));
     }
 
@@ -189,6 +194,7 @@ public class ItemControllerTest {
         item1.setName("New item");
 
         assertEquals(HttpStatus.OK.value(), response.getStatus());
+        item1.setComments(null);
         assertEquals(item1, mapper.readValue(response.getContentAsString(), ItemDto.class));
     }
 
@@ -222,7 +228,13 @@ public class ItemControllerTest {
 
     @Test
     public void shouldThrowExceptionForWrongOwnerUpdatingItem() throws Exception {
-        addDefaultUser();
+        UserDto userDto = addDefaultUser();
+        userDto.setEmail("new@mail.ru");
+        mvc.perform(
+                post(String.format("http://localhost:%d/users", port))
+                        .content(mapper.writeValueAsString(userDto))
+                        .contentType(MediaType.APPLICATION_JSON));
+
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
@@ -263,10 +275,11 @@ public class ItemControllerTest {
                 .name("DEBUGGER 9000")
                 .description("Launch and debug!")
                 .available(true)
+                .comments(List.of())
                 .build();
     }
 
-    private void addDefaultUser() throws Exception {
+    private UserDto addDefaultUser() throws Exception {
         UserDto userDto = UserDto.builder()
                 .name("Tom")
                 .email("tomsmail@mail.ru")
@@ -276,5 +289,7 @@ public class ItemControllerTest {
                 post(String.format("http://localhost:%d/users", port))
                         .content(mapper.writeValueAsString(userDto))
                         .contentType(MediaType.APPLICATION_JSON));
+
+        return userDto;
     }
 }

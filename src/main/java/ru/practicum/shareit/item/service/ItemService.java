@@ -1,5 +1,6 @@
 package ru.practicum.shareit.item.service;
 
+import ru.practicum.shareit.item.comment.model.Comment;
 import ru.practicum.shareit.item.model.Item;
 
 import java.util.Collection;
@@ -11,9 +12,13 @@ public interface ItemService {
 
     Item getItem(long id);
 
+    boolean isItemAvailable(long itemId);
+
     Collection<Item> getOwnerItems(long ownerId);
+
+    Collection<Item> searchAvailableItems(String query);
 
     Item updateItem(Item item, Map<UpdatedItemFields, Boolean> targetFields);
 
-    Collection<Item> searchAvailableItems(String query);
+    Comment addComment(Comment comment);
 }
