@@ -18,7 +18,7 @@ public interface BookingMapper {
     @Mapping(source = "item", target = "item")
     @Mapping(target = "approved", ignore = true)
     @Mapping(target = "id", ignore = true)
-    Booking mapToModel(BookingDtoRequest BookingDtoRequest, User booker, Item item);
+    Booking mapToModel(BookingDtoRequest bookingDtoRequest, User booker, Item item);
 
     @Mapping(source = "booking.startTime", target = "start")
     @Mapping(source = "booking.endTime", target = "end")
