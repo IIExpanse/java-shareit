@@ -17,7 +17,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             "AND (b.approved = ?3 OR ?3 IS NULL AND b.approved IS NULL)" +
             "ORDER BY b.startTime DESC"
     )
-    Collection<Booking> getAllByBookerIdOrItemOwnerIdAndApprovedIsOrderByStartTimeDesc(
+    Collection<Booking> getWaitingOrRejectedBookings(
             Long bookerId, Long ownerId, Boolean approved);
 
     @Query("SELECT b FROM Booking b " +
@@ -41,14 +41,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             "AND CURRENT_TIMESTAMP < b.endTime " +
             "ORDER BY b.startTime DESC"
     )
-    Collection<Booking> getCurrentBookingsByBookerIdOrOwnerId(Long bookerId, Long ownerId);
+    Collection<Booking> getCurrentBookings(Long bookerId, Long ownerId);
 
     @Query("SELECT b FROM Booking b " +
             "WHERE (b.booker.id = ?1 OR b.item.owner.id = ?2) " +
             "AND CURRENT_TIMESTAMP < b.startTime " +
             "ORDER BY b.startTime DESC"
     )
-    Collection<Booking> getFutureBookingsByBookerIdOrOwnerId(Long bookerId, Long ownerId);
+    Collection<Booking> getFutureBookings(Long bookerId, Long ownerId);
 
     Collection<Booking> getAllByItemOwnerId(long ownerId);
 
@@ -58,11 +58,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             "AND b.endTime > CURRENT_TIMESTAMP " +
             "ORDER BY b.startTime ASC"
     )
-    Collection<Booking> getActiveBookingsByItemIdOrderByStartTimeAsc(long itemId);
+    Collection<Booking> getActiveBookings(long itemId);
 
     @Query("SELECT b FROM Booking b " +
             "WHERE (b.booker.id = ?1 AND b.item.id = ?2) " +
             "AND b.startTime < CURRENT_TIMESTAMP " +
             "AND b.approved IS TRUE")
-    Collection<Booking> getApprovedBookingsByBookerIdAndItemIdNotInFuture(long bookerId, long itemId);
+    Collection<Booking> getApprovedBookingsNotInFuture(long bookerId, long itemId);
 }

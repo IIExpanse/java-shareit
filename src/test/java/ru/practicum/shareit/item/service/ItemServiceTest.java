@@ -8,11 +8,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
+import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.exception.ItemNotFoundException;
-import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.exception.UserNotFoundException;
-import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.service.UserService;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -29,52 +31,54 @@ public class ItemServiceTest {
 
     @Test
     public void addItemTest() {
-        User user = userService.addUser(makeDefaultUser());
-        Item item = itemService.addItem(makeDefaultItem(user));
+        UserDto user = userService.addUser(makeDefaultUser());
+        ItemDto item = itemService.addItem(makeDefaultItem(), user.getId());
+        item.setComments(List.of());
 
-        assertEquals(item, itemService.getItem(item.getId()));
+        assertEquals(item, itemService.getItemDto(item.getId(), user.getId()));
     }
 
     @Test
     public void shouldThrowExceptionForAddingItemWithAbsentOwner() {
-        User user = makeDefaultUser();
+        UserDto user = makeDefaultUser();
         user.setId(1L);
-        Item item = makeDefaultItem(user);
+        ItemDto item = makeDefaultItem();
 
-        assertThrows(UserNotFoundException.class, () -> itemService.addItem(item));
+        assertThrows(UserNotFoundException.class, () -> itemService.addItem(item, user.getId()));
     }
 
     @Test
     public void shouldThrowExceptionForAddingItemWithBlankNameOrDescription() {
-        User user = userService.addUser(makeDefaultUser());
-        Item item = makeDefaultItem(user);
+        UserDto user = userService.addUser(makeDefaultUser());
+        ItemDto item = makeDefaultItem();
         item.setName("");
-        assertThrows(DataIntegrityViolationException.class, () -> itemService.addItem(item));
+        assertThrows(DataIntegrityViolationException.class, () -> itemService.addItem(item, user.getId()));
 
         item.setName("name");
         item.setDescription("");
-        assertThrows(DataIntegrityViolationException.class, () -> itemService.addItem(item));
+        assertThrows(DataIntegrityViolationException.class, () -> itemService.addItem(item, user.getId()));
 
         item.setName("");
-        assertThrows(DataIntegrityViolationException.class, () -> itemService.addItem(item));
+        assertThrows(DataIntegrityViolationException.class, () -> itemService.addItem(item, user.getId()));
     }
 
     @Test
     public void shouldThrowExceptionForGettingNotFoundItem() {
-        assertThrows(ItemNotFoundException.class, () -> itemService.getItem(1L));
+        UserDto user = userService.addUser(makeDefaultUser());
+
+        assertThrows(ItemNotFoundException.class, () -> itemService.getItemDto(1L, user.getId()));
     }
 
-    private Item makeDefaultItem(User owner) {
-        return Item.builder()
-                .owner(owner)
+    private ItemDto makeDefaultItem() {
+        return ItemDto.builder()
                 .name("DEBUGGER 9000")
                 .description("Launch and debug!")
                 .available(true)
                 .build();
     }
 
-    private User makeDefaultUser() {
-        return User.builder()
+    private UserDto makeDefaultUser() {
+        return UserDto.builder()
                 .name("Tom")
                 .email("tomsmail@mail.ru")
                 .build();

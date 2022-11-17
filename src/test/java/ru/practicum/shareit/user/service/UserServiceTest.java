@@ -7,12 +7,9 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
+import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.exception.DuplicateEmailException;
 import ru.practicum.shareit.user.exception.UserNotFoundException;
-import ru.practicum.shareit.user.model.User;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -34,30 +31,28 @@ public class UserServiceTest {
 
     @Test
     public void shouldThrowExceptionForNotFoundUser() {
-        assertThrows(UserNotFoundException.class, () -> service.getUser(1L));
+        assertThrows(UserNotFoundException.class, () -> service.getUserDto(1L));
     }
 
     @Test
     public void shouldThrowExceptionForUpdatingUserWithDuplicateEmail() {
         service.addUser(makeDefaultUser());
-        User user = makeDefaultUser();
+        UserDto user = makeDefaultUser();
         user.setEmail("new@mail.ru");
-        service.addUser(user);
+        user = service.addUser(user);
 
-        Map<UpdatedUserFields, Boolean> targetFields = new HashMap<>();
-        targetFields.put(UpdatedUserFields.EMAIL, true);
-        targetFields.put(UpdatedUserFields.NAME, false);
-        User updatedUser = makeDefaultUser();
+        UserDto updatedUser = makeDefaultUser();
         updatedUser.setId(user.getId());
 
-        assertThrows(DuplicateEmailException.class, () -> service.updateUser(updatedUser, targetFields));
+        UserDto finalUser = user;
+        assertThrows(DuplicateEmailException.class, () -> service.updateUser(updatedUser, finalUser.getId()));
     }
 
     @Test
     public void deleteUserTest() {
-        User user = service.addUser(makeDefaultUser());
+        UserDto user = service.addUser(makeDefaultUser());
         long userId = user.getId();
-        assertEquals(user, service.getUser(userId));
+        assertEquals(user, service.getUserDto(userId));
 
         service.deleteUser(userId);
         assertTrue(service.getUsers().isEmpty());
@@ -68,8 +63,8 @@ public class UserServiceTest {
         assertThrows(UserNotFoundException.class, () -> service.deleteUser(1L));
     }
 
-    private User makeDefaultUser() {
-        return User.builder()
+    private UserDto makeDefaultUser() {
+        return UserDto.builder()
                 .name("Tom")
                 .email("tomsmail@mail.ru")
                 .build();

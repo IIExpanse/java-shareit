@@ -7,17 +7,20 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
+import ru.practicum.shareit.booking.dto.BookingDto;
+import ru.practicum.shareit.booking.dto.BookingDtoRequest;
+import ru.practicum.shareit.booking.dto.BookingStatus;
 import ru.practicum.shareit.booking.exception.BookingNotFoundException;
 import ru.practicum.shareit.booking.exception.CantBookOwnedItemException;
 import ru.practicum.shareit.booking.exception.ItemNotAvailableForBookingException;
 import ru.practicum.shareit.booking.exception.TimeWindowOccupiedException;
-import ru.practicum.shareit.booking.model.Booking;
-import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.service.ItemService;
-import ru.practicum.shareit.user.model.User;
+import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.service.UserService;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,16 +38,16 @@ public class BookingServiceTest {
 
     @Test
     public void addBookingTest() {
-        User user = userService.addUser(makeDefaultUser());
-        Item item = itemService.addItem(makeDefaultItem(user));
+        UserDto user = userService.addUser(makeDefaultUser());
+        ItemDto item = itemService.addItem(makeDefaultItem(), user.getId());
 
-        User booker = makeDefaultUser();
+        UserDto booker = makeDefaultUser();
         booker.setEmail("new@mail.ru");
         booker = userService.addUser(booker);
 
-        Booking booking = service.addBooking(makeDefaultBooking(item, booker));
+        BookingDto booking = service.addBooking(makeDefaultBookingDtoRequest(item.getId()), booker.getId());
 
-        assertEquals(booking, service.getBooking(booking.getId()));
+        assertEquals(booking, service.getBookingDto(booking.getId(), booker.getId()));
     }
 
     @Test
@@ -56,163 +59,170 @@ public class BookingServiceTest {
         LocalDateTime timePoint5 = timePoint4.plusDays(1);
         LocalDateTime timePoint6 = timePoint5.plusDays(1);
 
-        User user = userService.addUser(makeDefaultUser());
-        Item item = itemService.addItem(makeDefaultItem(user));
+        UserDto user = userService.addUser(makeDefaultUser());
+        ItemDto item = itemService.addItem(makeDefaultItem(), user.getId());
+        long itemId = item.getId();
 
-        User booker1 = makeDefaultUser();
+        UserDto booker1 = makeDefaultUser();
         booker1.setEmail("new1@mail.ru");
         booker1 = userService.addUser(booker1);
 
-        User booker2 = makeDefaultUser();
+        UserDto booker2 = makeDefaultUser();
         booker2.setEmail("new2@mail.ru");
         booker2 = userService.addUser(booker2);
 
-        User booker3 = makeDefaultUser();
+        UserDto booker3 = makeDefaultUser();
         booker3.setEmail("new3@mail.ru");
         booker3 = userService.addUser(booker3);
 
-        Booking booking1 = makeDefaultBooking(item, booker1);
-        booking1.setStartTime(timePoint1);
-        booking1.setEndTime(timePoint3);
-        service.addBooking(booking1);
+        BookingDtoRequest booking1 = makeDefaultBookingDtoRequest(itemId);
+        booking1.setStart(timePoint1);
+        booking1.setEnd(timePoint3);
+        service.addBooking(booking1, booker1.getId());
 
-        Booking booking2 = makeDefaultBooking(item, booker2);
-        booking2.setStartTime(timePoint4);
-        booking2.setEndTime(timePoint6);
-        service.addBooking(booking2);
+        BookingDtoRequest booking2 = makeDefaultBookingDtoRequest(itemId);
+        booking2.setStart(timePoint4);
+        booking2.setEnd(timePoint6);
+        service.addBooking(booking2, booker2.getId());
 
-        Booking booking3 = makeDefaultBooking(item, booker3);
-        booking3.setStartTime(timePoint2);
-        booking3.setEndTime(timePoint5);
+        BookingDtoRequest booking3 = makeDefaultBookingDtoRequest(itemId);
+        booking3.setStart(timePoint2);
+        booking3.setEnd(timePoint5);
 
-        assertThrows(TimeWindowOccupiedException.class, () -> service.addBooking(booking3));
+        UserDto finalBooker = booker3;
+        assertThrows(TimeWindowOccupiedException.class, () -> service.addBooking(booking3, finalBooker.getId()));
     }
 
     @Test
     public void shouldThrowExceptionForBookingOwnedItem() {
-        User user = userService.addUser(makeDefaultUser());
-        Item item = itemService.addItem(makeDefaultItem(user));
+        UserDto user = userService.addUser(makeDefaultUser());
+        ItemDto item = itemService.addItem(makeDefaultItem(), user.getId());
 
-        assertThrows(CantBookOwnedItemException.class, () -> service.addBooking(makeDefaultBooking(item, user)));
+        assertThrows(CantBookOwnedItemException.class,
+                () -> service.addBooking(makeDefaultBookingDtoRequest(item.getId()), user.getId()));
     }
 
     @Test
     public void shouldThrowExceptionForBookingUnavailableItem() {
-        User user = userService.addUser(makeDefaultUser());
-        Item item = makeDefaultItem(user);
+        UserDto user = userService.addUser(makeDefaultUser());
+        ItemDto item = makeDefaultItem();
         item.setAvailable(false);
-        item = itemService.addItem(item);
+        item = itemService.addItem(item, user.getId());
 
-        User booker = makeDefaultUser();
+        UserDto booker = makeDefaultUser();
         booker.setEmail("new@mail.ru");
         booker = userService.addUser(booker);
 
-        Item finalItem = item;
-        User finalBooker = booker;
+        ItemDto finalItem = item;
+        UserDto finalBooker = booker;
         assertThrows(ItemNotAvailableForBookingException.class,
-                () -> service.addBooking(makeDefaultBooking(finalItem, finalBooker)));
+                () -> service.addBooking(makeDefaultBookingDtoRequest(finalItem.getId()), finalBooker.getId()));
     }
 
     @Test
     public void shouldThrowExceptionForGettingNotFoundBooking() {
-        assertThrows(BookingNotFoundException.class, () -> service.getBooking(1));
+        UserDto userDto = makeDefaultUser();
+        userDto = userService.addUser(userDto);
+
+        UserDto finalUserDto = userDto;
+        assertThrows(BookingNotFoundException.class, () -> service.getBookingDto(finalUserDto.getId(), 1));
     }
 
     @Test
     public void getBookingsByBookerIdAndStatusSortedByDateDescTest() {
-        User user = userService.addUser(makeDefaultUser());
-        Item item1 = itemService.addItem(makeDefaultItem(user));
-        Item item2 = itemService.addItem(makeDefaultItem(user));
-        Item item3 = itemService.addItem(makeDefaultItem(user));
-        Item item4 = itemService.addItem(makeDefaultItem(user));
-        Item item5 = itemService.addItem(makeDefaultItem(user));
+        UserDto user = userService.addUser(makeDefaultUser());
+        long userId = user.getId();
+        ItemDto item1 = itemService.addItem(makeDefaultItem(), userId);
+        ItemDto item2 = itemService.addItem(makeDefaultItem(), userId);
+        ItemDto item3 = itemService.addItem(makeDefaultItem(), userId);
+        ItemDto item4 = itemService.addItem(makeDefaultItem(), userId);
+        ItemDto item5 = itemService.addItem(makeDefaultItem(), userId);
 
-        User booker = makeDefaultUser();
+        UserDto booker = makeDefaultUser();
         booker.setEmail("new1@mail.ru");
         booker = userService.addUser(booker);
         long bookerId = booker.getId();
 
-        Booking waitingBooking = makeDefaultBooking(item1, booker);
-        waitingBooking.setStartTime(waitingBooking.getStartTime().plusMinutes(1));
-        waitingBooking.setEndTime(waitingBooking.getEndTime().plusMinutes(1));
-        waitingBooking = service.addBooking(waitingBooking);
+        BookingDtoRequest waitingBookingRequest = makeDefaultBookingDtoRequest(item1.getId());
+        waitingBookingRequest.setStart(waitingBookingRequest.getStart().plusMinutes(1));
+        waitingBookingRequest.setEnd(waitingBookingRequest.getEnd().plusMinutes(1));
+        BookingDto waitingBooking = service.addBooking(waitingBookingRequest, bookerId);
         assertEquals(List.of(waitingBooking), service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.WAITING));
+                bookerId, null, BookingStatus.WAITING.toString()));
 
-        Booking rejectedBooking = makeDefaultBooking(item2, booker);
-        rejectedBooking.setApproved(false);
-        rejectedBooking = service.addBooking(rejectedBooking);
+        BookingDtoRequest rejectedBookingRequest = makeDefaultBookingDtoRequest(item2.getId());
+        BookingDto rejectedBooking = service.addBooking(rejectedBookingRequest, bookerId);
+        rejectedBooking = service.setApproval(rejectedBooking.getId(), false, userId);
         assertEquals(List.of(rejectedBooking), service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.REJECTED));
+                bookerId, null, BookingStatus.REJECTED.toString()));
 
-        Booking pastBooking = makeDefaultBooking(item3, booker);
-        pastBooking.setApproved(true);
-        pastBooking.setStartTime(pastBooking.getStartTime().minusDays(3));
-        pastBooking.setEndTime(pastBooking.getEndTime().minusDays(3));
-        pastBooking = service.addBooking(pastBooking);
+        BookingDtoRequest pastBookingRequest = makeDefaultBookingDtoRequest(item3.getId());
+        pastBookingRequest.setStart(pastBookingRequest.getStart().minusDays(3));
+        pastBookingRequest.setEnd(pastBookingRequest.getEnd().minusDays(3));
+        BookingDto pastBooking = service.addBooking(pastBookingRequest, bookerId);
+        pastBooking = service.setApproval(pastBooking.getId(), true, userId);
         assertEquals(List.of(pastBooking), service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.PAST));
+                bookerId, null, BookingStatus.PAST.toString()));
 
-        Booking futureBooking = makeDefaultBooking(item4, booker);
-        futureBooking.setApproved(true);
-        futureBooking.setStartTime(futureBooking.getStartTime().plusDays(1));
-        futureBooking.setEndTime(futureBooking.getEndTime().plusDays(1));
-        futureBooking = service.addBooking(futureBooking);
+        BookingDtoRequest futureBookingRequest = makeDefaultBookingDtoRequest(item4.getId());
+        futureBookingRequest.setStart(futureBookingRequest.getStart().plusDays(1));
+        futureBookingRequest.setEnd(futureBookingRequest.getEnd().plusDays(1));
+        BookingDto futureBooking = service.addBooking(futureBookingRequest, bookerId);
+        futureBooking = service.setApproval(futureBooking.getId(), true, userId);
         assertEquals(List.of(futureBooking, waitingBooking, rejectedBooking), service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.FUTURE));
+                bookerId, null, BookingStatus.FUTURE.toString()));
 
-        Booking currentBooking = makeDefaultBooking(item5, booker);
-        currentBooking.setApproved(true);
-        currentBooking.setStartTime(currentBooking.getStartTime().minusHours(1));
-        currentBooking.setEndTime(currentBooking.getEndTime().plusDays(1));
-        currentBooking = service.addBooking(currentBooking);
+        BookingDtoRequest currentBookingRequest = makeDefaultBookingDtoRequest(item5.getId());
+        currentBookingRequest.setStart(currentBookingRequest.getStart().minusHours(1));
+        currentBookingRequest.setEnd(currentBookingRequest.getEnd().plusDays(1));
+        BookingDto currentBooking = service.addBooking(currentBookingRequest, bookerId);
+        currentBooking = service.setApproval(currentBooking.getId(), true, userId);
         assertEquals(List.of(currentBooking), service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.CURRENT));
+                bookerId, null, BookingStatus.CURRENT.toString()));
 
-        futureBooking = service.getBooking(futureBooking.getId());
-        waitingBooking = service.getBooking(waitingBooking.getId());
-        rejectedBooking = service.getBooking(rejectedBooking.getId());
-        currentBooking = service.getBooking(currentBooking.getId());
-        pastBooking = service.getBooking(pastBooking.getId());
+        futureBooking = service.getBookingDto(futureBooking.getId(), bookerId);
+        waitingBooking = service.getBookingDto(waitingBooking.getId(), bookerId);
+        rejectedBooking = service.getBookingDto(rejectedBooking.getId(), bookerId);
+        currentBooking = service.getBookingDto(currentBooking.getId(), bookerId);
+        pastBooking = service.getBookingDto(pastBooking.getId(), bookerId);
         assertEquals(List.of(futureBooking, waitingBooking, rejectedBooking, currentBooking, pastBooking),
                 service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.ALL));
+                bookerId, null, BookingStatus.ALL.toString()));
     }
 
     @Test
     public void setApprovalTest() {
-        User user = userService.addUser(makeDefaultUser());
-        Item item = itemService.addItem(makeDefaultItem(user));
+        UserDto user = userService.addUser(makeDefaultUser());
+        ItemDto item = itemService.addItem(makeDefaultItem(), user.getId());
 
-        User booker = makeDefaultUser();
+        UserDto booker = makeDefaultUser();
         booker.setEmail("new1@mail.ru");
         booker = userService.addUser(booker);
-        Booking booking = service.addBooking(makeDefaultBooking(item, booker));
+        BookingDto booking = service.addBooking(makeDefaultBookingDtoRequest(item.getId()), booker.getId());
+        service.setApproval(booking.getId(), true, user.getId());
 
-        assertTrue(service.setApproval(booking.getId(), true).getApproved());
-        assertFalse(service.setApproval(booking.getId(), false).getApproved());
+        assertTrue(service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
+                booker.getId(), null, BookingStatus.WAITING.toString()).isEmpty());
     }
 
-    private Booking makeDefaultBooking(Item item, User booker) {
-        return Booking.builder()
-                .item(item)
-                .booker(booker)
-                .startTime(LocalDateTime.now().plusMinutes(1))
-                .endTime(LocalDateTime.now().plusMinutes(1).plusDays(1))
+    private BookingDtoRequest makeDefaultBookingDtoRequest(long itemId) {
+        return BookingDtoRequest.builder()
+                .itemId(itemId)
+                .start(LocalDateTime.now().plusMinutes(1).truncatedTo(ChronoUnit.SECONDS))
+                .end(LocalDateTime.now().plusMinutes(1).plusDays(1).truncatedTo(ChronoUnit.SECONDS))
                 .build();
     }
 
-    private Item makeDefaultItem(User owner) {
-        return Item.builder()
-                .owner(owner)
+    private ItemDto makeDefaultItem() {
+        return ItemDto.builder()
                 .name("DEBUGGER 9000")
                 .description("Launch and debug!")
                 .available(true)
                 .build();
     }
 
-    private User makeDefaultUser() {
-        return User.builder()
+    private UserDto makeDefaultUser() {
+        return UserDto.builder()
                 .name("Tom")
                 .email("tomsmail@mail.ru")
                 .build();

@@ -10,16 +10,10 @@ import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.exception.DuplicateEmailException;
 import ru.practicum.shareit.user.exception.EmptyUserPatchRequestException;
 import ru.practicum.shareit.user.exception.UserNotFoundException;
-import ru.practicum.shareit.user.mapper.UserMapper;
-import ru.practicum.shareit.user.model.User;
-import ru.practicum.shareit.user.service.UpdatedUserFields;
 import ru.practicum.shareit.user.service.UserService;
 
 import javax.validation.Valid;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Класс для обработки запросов, работающих с объектами пользователей.
@@ -32,7 +26,6 @@ import java.util.stream.Collectors;
 public class UserController {
 
     private final UserService service;
-    private final UserMapper mapper;
 
     /**
      * Добавление нового пользователя.
@@ -44,13 +37,8 @@ public class UserController {
     @PostMapping
     @Validated(value = UserValidationGroup.FullValidation.class)
     ResponseEntity<UserDto> addUser(@RequestBody @Valid UserDto userDto) {
-        User user = mapper.mapToModel(userDto);
-        user.setId(null);
-        ResponseEntity<UserDto> response = new ResponseEntity<>(
-                mapper.mapToDto(service.addUser(user)), HttpStatus.CREATED);
 
-        log.debug("Добавлен новый пользователь: {}", response.getBody());
-        return response;
+        return new ResponseEntity<>(service.addUser(userDto), HttpStatus.CREATED);
     }
 
     /**
@@ -62,7 +50,7 @@ public class UserController {
      */
     @GetMapping(path = "/{id}")
     ResponseEntity<UserDto> getUser(@PathVariable long id) {
-        return ResponseEntity.ok(mapper.mapToDto(service.getUser(id)));
+        return ResponseEntity.ok(service.getUserDto(id));
     }
 
     /**
@@ -72,9 +60,7 @@ public class UserController {
      */
     @GetMapping
     ResponseEntity<Collection<UserDto>> getUsers() {
-        return ResponseEntity.ok(service.getUsers().stream()
-                .map(mapper::mapToDto)
-                .collect(Collectors.toList()));
+        return ResponseEntity.ok(service.getUsers());
     }
 
     /**
@@ -92,36 +78,8 @@ public class UserController {
     @PatchMapping(path = "/{id}")
     @Validated(value = UserValidationGroup.PatchValidation.class)
     ResponseEntity<UserDto> updateUser(@RequestBody @Valid UserDto userDto, @PathVariable long id) {
-        Map<UpdatedUserFields, Boolean> targetFields = new HashMap<>();
-        boolean empty = true;
-        ResponseEntity<UserDto> response;
-        User user;
 
-        if (userDto.getName() != null) {
-            targetFields.put(UpdatedUserFields.NAME, true);
-            empty = false;
-        } else {
-            targetFields.put(UpdatedUserFields.NAME, false);
-        }
-
-        if (userDto.getEmail() != null) {
-            targetFields.put(UpdatedUserFields.EMAIL, true);
-            empty = false;
-        } else {
-            targetFields.put(UpdatedUserFields.EMAIL, false);
-        }
-
-        if (empty) {
-            throw new EmptyUserPatchRequestException("Ошибка обновления пользователя: в запросе все поля равны null.");
-        }
-
-        user = mapper.mapToModel(userDto);
-        user.setId(id);
-        response = ResponseEntity.ok(
-                mapper.mapToDto(service.updateUser(user, targetFields)));
-
-        log.debug("Обновлен пользователь: {}", response.getBody());
-        return response;
+        return ResponseEntity.ok(service.updateUser(userDto, id));
     }
 
     /**

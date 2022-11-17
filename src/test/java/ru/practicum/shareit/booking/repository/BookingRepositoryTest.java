@@ -14,6 +14,7 @@ import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.repository.UserRepository;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -72,7 +73,7 @@ public class BookingRepositoryTest {
         preApprovedBooking.setApproved(true);
         preApprovedBooking = bookingRepository.save(preApprovedBooking);
         assertEquals(List.of(preApprovedBooking),
-                bookingRepository.getAllByBookerIdOrItemOwnerIdAndApprovedIsOrderByStartTimeDesc(
+                bookingRepository.getWaitingOrRejectedBookings(
                         booker.getId(), null, true));
 
         User owner2 = makeDefaultUser();
@@ -85,7 +86,7 @@ public class BookingRepositoryTest {
         preRejectedBooking.setApproved(false);
         preRejectedBooking = bookingRepository.save(preRejectedBooking);
         assertEquals(List.of(preRejectedBooking),
-                bookingRepository.getAllByBookerIdOrItemOwnerIdAndApprovedIsOrderByStartTimeDesc(
+                bookingRepository.getWaitingOrRejectedBookings(
                         booker.getId(), null, false));
     }
 
@@ -134,7 +135,7 @@ public class BookingRepositoryTest {
         pastBooking.setStartTime(pastBooking.getStartTime().minusMonths(1));
         pastBooking.setEndTime(pastBooking.getEndTime().minusMonths(1));
         bookingRepository.save(pastBooking);
-        assertEquals(List.of(), bookingRepository.getCurrentBookingsByBookerIdOrOwnerId(booker.getId(), null));
+        assertEquals(List.of(), bookingRepository.getCurrentBookings(booker.getId(), null));
 
         User owner2 = makeDefaultUser();
         owner2.setEmail("another@mail.com");
@@ -147,7 +148,7 @@ public class BookingRepositoryTest {
         currentBooking.setStartTime(LocalDateTime.now().minusSeconds(1));
         currentBooking = bookingRepository.save(currentBooking);
         assertEquals(List.of(currentBooking),
-                bookingRepository.getCurrentBookingsByBookerIdOrOwnerId(booker.getId(), null));
+                bookingRepository.getCurrentBookings(booker.getId(), null));
     }
 
     @Test
@@ -215,8 +216,8 @@ public class BookingRepositoryTest {
         return Booking.builder()
                 .item(item)
                 .booker(booker)
-                .startTime(LocalDateTime.now().plusMinutes(1))
-                .endTime(LocalDateTime.now().plusMinutes(1).plusDays(1))
+                .startTime(LocalDateTime.now().plusMinutes(1).truncatedTo(ChronoUnit.SECONDS))
+                .endTime(LocalDateTime.now().plusMinutes(1).plusDays(1).truncatedTo(ChronoUnit.SECONDS))
                 .build();
     }
 

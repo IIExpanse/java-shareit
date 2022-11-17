@@ -1,6 +1,8 @@
 package ru.practicum.shareit.booking.service;
 
-import ru.practicum.shareit.booking.model.Booking;
+import ru.practicum.shareit.booking.dto.BookingDto;
+import ru.practicum.shareit.booking.dto.BookingDtoRequest;
+import ru.practicum.shareit.booking.dto.BookingDtoShort;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.item.service.ActualItemBooking;
 
@@ -11,16 +13,14 @@ public interface BookingService {
 
     boolean isCommentMadeAfterBooking(long bookerId, long itemId);
 
-    Booking addBooking(Booking booking);
+    BookingDto addBooking(BookingDtoRequest bookingDtoRequest, long bookerId);
 
-    Booking getBooking(long bookingId);
+    BookingDto getBookingDto(long requesterId, long bookingId);
 
-    Collection<Booking> getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-            Long bookerId, Long ownerId, BookingStatus status);
+    Collection<BookingDto> getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
+            Long bookerId, Long ownerId, String state);
 
-    Booking setApproval(long bookingId, boolean approved);
+    BookingDto setApproval(long bookingId, boolean approved, long requesterId);
 
-    Map<ActualItemBooking, Booking> getLastAndNextBookingByItem(Item item);
-
-    BookingStatus determineStatus(Booking booking);
+    Map<ActualItemBooking, BookingDtoShort> getLastAndNextBookingByItem(Item item, long requesterId);
 }

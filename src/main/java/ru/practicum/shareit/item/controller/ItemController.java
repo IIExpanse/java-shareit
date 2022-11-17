@@ -6,32 +6,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.shareit.booking.dto.BookingDtoShort;
-import ru.practicum.shareit.booking.exception.CommenterDontHaveBookingException;
-import ru.practicum.shareit.booking.mapper.BookingMapper;
-import ru.practicum.shareit.booking.model.Booking;
-import ru.practicum.shareit.booking.service.BookingService;
 import ru.practicum.shareit.item.comment.dto.CommentDto;
-import ru.practicum.shareit.item.comment.mapper.CommentMapper;
-import ru.practicum.shareit.item.comment.model.Comment;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.exception.EmptyItemPatchRequestException;
 import ru.practicum.shareit.item.exception.ItemNotFoundException;
 import ru.practicum.shareit.item.exception.WrongOwnerUpdatingItemException;
-import ru.practicum.shareit.item.mapper.ItemMapper;
-import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.item.service.ActualItemBooking;
 import ru.practicum.shareit.item.service.ItemService;
-import ru.practicum.shareit.item.service.UpdatedItemFields;
 import ru.practicum.shareit.user.exception.UserNotFoundException;
-import ru.practicum.shareit.user.service.UserService;
 
 import javax.validation.Valid;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static ru.practicum.shareit.item.service.ActualItemBooking.LAST;
-import static ru.practicum.shareit.item.service.ActualItemBooking.NEXT;
+import java.util.Collection;
 
 @Validated
 @RestController
@@ -41,11 +25,6 @@ import static ru.practicum.shareit.item.service.ActualItemBooking.NEXT;
 public class ItemController {
 
     private final ItemService itemService;
-    private final UserService userService;
-    private final BookingService bookingService;
-    private final ItemMapper itemMapper;
-    private final BookingMapper bookingMapper;
-    private final CommentMapper commentMapper;
 
     /**
      * Добавление новой вещи.
@@ -58,47 +37,31 @@ public class ItemController {
     @PostMapping
     public ResponseEntity<ItemDto> addItem(@RequestHeader(name = "X-Sharer-User-Id") long ownerId,
                                            @RequestBody @Valid ItemDto itemDto) {
-        Item item = itemMapper.mapToModel(itemDto, userService.getUser(ownerId));
-        ResponseEntity<ItemDto> response = new ResponseEntity<>(
-                itemMapper.mapToDto(itemService.addItem(item), null, null), HttpStatus.CREATED);
 
-        log.debug("Добавлена новая вещь: {}", response.getBody());
-        return response;
+        return new ResponseEntity<>(itemService.addItem(itemDto, ownerId), HttpStatus.CREATED);
     }
 
     @PostMapping(path = "/{itemId}/comment")
     public ResponseEntity<CommentDto> addComment(@RequestHeader(name = "X-Sharer-User-Id") long authorId,
                                                  @PathVariable long itemId,
                                                  @RequestBody @Valid CommentDto commentDto) {
-        if (!bookingService.isCommentMadeAfterBooking(authorId, itemId)) {
-            throw new CommenterDontHaveBookingException(String.format("Ошибка при добавлении комментария: " +
-                    "пользователь с id=%d не оформлял бронирований вещи с id=%d.", authorId, itemId));
-        }
 
-        Comment comment = commentMapper.mapToModel(
-                commentDto, userService.getUser(authorId), itemService.getItem(itemId));
-        comment = itemService.addComment(comment);
-
-        log.debug("Добавлен комментарий: {}", comment);
-        return ResponseEntity.ok(commentMapper.mapToDto(comment));
+        return ResponseEntity.ok(itemService.addComment(commentDto, authorId, itemId));
     }
 
     /**
      * Получение существующей вещи.
      *
      * @param id     - идентификатор существующей вещи.
-     * @param userId - идентификатор пользователя.
+     * @param requesterId - идентификатор пользователя.
      * @return DTO существующей вещи.
      * @throws ItemNotFoundException - если вещь с указанным id не найдена.
      */
     @GetMapping(path = "/{id}")
-    public ResponseEntity<ItemDto> getItem(@RequestHeader(name = "X-Sharer-User-Id") long userId,
+    public ResponseEntity<ItemDto> getItem(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
                                            @PathVariable long id) {
-        Item item = itemService.getItem(id);
-        Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap = getLastAndNextBooking(item, userId);
 
-
-        return ResponseEntity.ok(itemMapper.mapToDto(item, itemDtoBookingsMap.get(LAST), itemDtoBookingsMap.get(NEXT)));
+        return ResponseEntity.ok(itemService.getItemDto(id, requesterId));
     }
 
     /**
@@ -109,39 +72,24 @@ public class ItemController {
      */
     @GetMapping
     public ResponseEntity<Collection<ItemDto>> getOwnerItems(@RequestHeader(name = "X-Sharer-User-Id") long ownerId) {
-        Collection<ItemDto> collection = itemService.getOwnerItems(ownerId).stream()
-                .map(item -> {
-                    Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap = getLastAndNextBooking(item, ownerId);
-                    return itemMapper.mapToDto(item, itemDtoBookingsMap.get(LAST), itemDtoBookingsMap.get(NEXT));
-                })
-                .sorted(Comparator.comparing(ItemDto::getId))
-                .collect(Collectors.toList());
 
-        return ResponseEntity.ok(collection);
+        return ResponseEntity.ok(itemService.getOwnerItems(ownerId));
     }
 
     /**
      * Поиск всех доступных для бронирования вещей,
      * в названии или описании которых присутствует текст поискового запроса (регистр игнорируется).
      *
-     * @param userId - идентификатор пользователя.
+     * @param ownerId - идентификатор пользователя.
      * @param text   - текст поискового запроса. Не может быть пустым либо содержать только пробелы.
      * @return Список найденных вещей. При пустом запросе либо отсутствии результатов возвращается пустой список.
      */
     @GetMapping(path = "/search")
     public ResponseEntity<Collection<ItemDto>> searchAvailableItems(
-            @RequestHeader(name = "X-Sharer-User-Id") long userId,
+            @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
             @RequestParam String text) {
-        if (!text.isEmpty()) {
-            return ResponseEntity.ok(itemService.searchAvailableItems(text).stream()
-                    .map(item -> {
-                        Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap = getLastAndNextBooking(item, userId);
-                        return itemMapper.mapToDto(item, itemDtoBookingsMap.get(LAST), itemDtoBookingsMap.get(NEXT));
-                    })
-                    .sorted(Comparator.comparing(ItemDto::getId))
-                    .collect(Collectors.toList()));
 
-        } else return ResponseEntity.ok(List.of());
+        return ResponseEntity.ok(itemService.searchAvailableItems(ownerId, text));
     }
 
     /**
@@ -163,71 +111,7 @@ public class ItemController {
     public ResponseEntity<ItemDto> updateItem(@RequestHeader(name = "X-Sharer-User-Id") long ownerId,
                                               @PathVariable long itemId,
                                               @RequestBody ItemDto itemDto) {
-        Map<UpdatedItemFields, Boolean> targetFields = new HashMap<>();
-        boolean empty = true;
-        ResponseEntity<ItemDto> response;
-        Item item;
-        Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap;
 
-        if (itemDto.getName() != null) {
-            targetFields.put(UpdatedItemFields.NAME, true);
-            empty = false;
-        } else {
-            targetFields.put(UpdatedItemFields.NAME, false);
-        }
-
-        if (itemDto.getDescription() != null) {
-            targetFields.put(UpdatedItemFields.DESCRIPTION, true);
-            empty = false;
-        } else {
-            targetFields.put(UpdatedItemFields.DESCRIPTION, false);
-        }
-
-        if (itemDto.getAvailable() != null) {
-            targetFields.put(UpdatedItemFields.AVAILABLE, true);
-            empty = false;
-        } else {
-            targetFields.put(UpdatedItemFields.AVAILABLE, false);
-        }
-
-        if (empty) {
-            throw new EmptyItemPatchRequestException("Ошибка обновления вещи: в запросе все поля равны null.");
-        }
-
-        item = itemMapper.mapToModel(itemDto, userService.getUser(ownerId));
-        item.setId(itemId);
-        item = itemService.updateItem(item, targetFields);
-        itemDtoBookingsMap = getLastAndNextBooking(item, ownerId);
-
-        response = ResponseEntity.ok(
-                itemMapper.mapToDto(item, itemDtoBookingsMap.get(LAST), itemDtoBookingsMap.get(NEXT)));
-
-        log.debug("Обновлена вещь: {}", response.getBody());
-        return response;
-    }
-
-    private Map<ActualItemBooking, BookingDtoShort> getLastAndNextBooking(Item item, long requesterId) {
-        Map<ActualItemBooking, BookingDtoShort> bookingsDtoMap = new HashMap<>();
-        Map<ActualItemBooking, Booking> bookingsMap;
-
-        if (item.getOwner().getId() == requesterId) {
-            bookingsMap = new HashMap<>(bookingService.getLastAndNextBookingByItem(item));
-
-        } else {
-            bookingsMap = new HashMap<>();
-            bookingsMap.put(LAST, null);
-            bookingsMap.put(NEXT, null);
-        }
-
-        for (Map.Entry<ActualItemBooking, Booking> bookingEntry : bookingsMap.entrySet()) {
-            Booking booking = bookingEntry.getValue();
-            if (booking != null) {
-                bookingsDtoMap.put(bookingEntry.getKey(), bookingMapper.mapToShortDto(booking));
-            } else {
-                bookingsDtoMap.put(bookingEntry.getKey(), null);
-            }
-        }
-
-        return bookingsDtoMap;
+        return ResponseEntity.ok(itemService.updateItem(itemDto, itemId, ownerId));
     }
 }
