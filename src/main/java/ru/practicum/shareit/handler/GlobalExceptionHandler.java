@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import ru.practicum.shareit.booking.exception.*;
 import ru.practicum.shareit.item.exception.EmptyItemPatchRequestException;
 import ru.practicum.shareit.item.exception.ItemNotFoundException;
 import ru.practicum.shareit.item.exception.WrongOwnerUpdatingItemException;
@@ -25,7 +26,12 @@ public class GlobalExceptionHandler {
             EmptyItemPatchRequestException.class,
             EmptyUserPatchRequestException.class,
             MethodArgumentNotValidException.class,
-            ConstraintViolationException.class
+            ConstraintViolationException.class,
+            EndBeforeOrEqualsStartException.class,
+            IllegalArgumentException.class,
+            ItemNotAvailableForBookingException.class,
+            ApprovalAlreadySetException.class,
+            CommenterDontHaveBookingException.class
     })
     ResponseEntity<ErrorResponse> handleBadRequestExceptions(final Exception e) {
         String exceptionName = e.getClass().getName();
@@ -45,7 +51,9 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(WrongOwnerUpdatingItemException.class)
+    @ExceptionHandler({
+            WrongOwnerUpdatingItemException.class
+    })
     ResponseEntity<ErrorResponse> handleForbiddenExceptions(final RuntimeException e) {
         String exceptionName = e.getClass().getName();
         exceptionName = exceptionName.substring(exceptionName.lastIndexOf(".") + 1);
@@ -59,7 +67,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             ItemNotFoundException.class,
-            UserNotFoundException.class
+            UserNotFoundException.class,
+            BookingNotFoundException.class,
+            CantViewUnrelatedBookingException.class,
+            WrongUserUpdatingBooking.class,
+            CantBookOwnedItemException.class
     })
     ResponseEntity<ErrorResponse> handleNotFoundExceptions(final RuntimeException e) {
         String exceptionName = e.getClass().getName();
@@ -72,7 +84,10 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(DuplicateEmailException.class)
+    @ExceptionHandler({
+            DuplicateEmailException.class,
+            TimeWindowOccupiedException.class
+    })
     ResponseEntity<ErrorResponse> handleConflictExceptions(final RuntimeException e) {
         String exceptionName = e.getClass().getName();
         exceptionName = exceptionName.substring(exceptionName.lastIndexOf(".") + 1);
@@ -88,6 +103,6 @@ public class GlobalExceptionHandler {
     @AllArgsConstructor
     static class ErrorResponse {
         private final String errorName;
-        private final String errorMessage;
+        private final String error;
     }
 }

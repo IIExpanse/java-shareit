@@ -6,19 +6,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.shareit.item.comment.dto.CommentDto;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.exception.EmptyItemPatchRequestException;
 import ru.practicum.shareit.item.exception.ItemNotFoundException;
 import ru.practicum.shareit.item.exception.WrongOwnerUpdatingItemException;
-import ru.practicum.shareit.item.mapper.ItemMapper;
-import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.item.service.ItemService;
-import ru.practicum.shareit.item.service.UpdatedItemFields;
 import ru.practicum.shareit.user.exception.UserNotFoundException;
 
 import javax.validation.Valid;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collection;
 
 @Validated
 @RestController
@@ -27,8 +24,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ItemController {
 
-    private final ItemService service;
-    private final ItemMapper mapper;
+    private final ItemService itemService;
 
     /**
      * Добавление новой вещи.
@@ -41,25 +37,31 @@ public class ItemController {
     @PostMapping
     public ResponseEntity<ItemDto> addItem(@RequestHeader(name = "X-Sharer-User-Id") long ownerId,
                                            @RequestBody @Valid ItemDto itemDto) {
-        Item item = mapper.mapToModel(itemDto);
-        item.setOwnerId(ownerId);
-        ResponseEntity<ItemDto> response = new ResponseEntity<>(
-                mapper.mapToDto(service.addItem(item)), HttpStatus.CREATED);
 
-        log.debug("Добавлена новая вещь: {}", response.getBody());
-        return response;
+        return new ResponseEntity<>(itemService.addItem(itemDto, ownerId), HttpStatus.CREATED);
+    }
+
+    @PostMapping(path = "/{itemId}/comment")
+    public ResponseEntity<CommentDto> addComment(@RequestHeader(name = "X-Sharer-User-Id") long authorId,
+                                                 @PathVariable long itemId,
+                                                 @RequestBody @Valid CommentDto commentDto) {
+
+        return ResponseEntity.ok(itemService.addComment(commentDto, authorId, itemId));
     }
 
     /**
      * Получение существующей вещи.
      *
-     * @param id - идентификатор существующей вещи.
+     * @param id     - идентификатор существующей вещи.
+     * @param requesterId - идентификатор пользователя.
      * @return DTO существующей вещи.
      * @throws ItemNotFoundException - если вещь с указанным id не найдена.
      */
     @GetMapping(path = "/{id}")
-    public ResponseEntity<ItemDto> getItem(@PathVariable long id) {
-        return ResponseEntity.ok(mapper.mapToDto(service.getItem(id)));
+    public ResponseEntity<ItemDto> getItem(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
+                                           @PathVariable long id) {
+
+        return ResponseEntity.ok(itemService.getItemDto(id, requesterId));
     }
 
     /**
@@ -70,28 +72,24 @@ public class ItemController {
      */
     @GetMapping
     public ResponseEntity<Collection<ItemDto>> getOwnerItems(@RequestHeader(name = "X-Sharer-User-Id") long ownerId) {
-        Collection<ItemDto> collection = service.getOwnerItems(ownerId).stream()
-                .map(mapper::mapToDto)
-                .collect(Collectors.toList());
 
-        return ResponseEntity.ok(collection);
+        return ResponseEntity.ok(itemService.getOwnerItems(ownerId));
     }
 
     /**
      * Поиск всех доступных для бронирования вещей,
      * в названии или описании которых присутствует текст поискового запроса (регистр игнорируется).
      *
-     * @param text - текст поискового запроса. Не может быть пустым либо содержать только пробелы.
+     * @param ownerId - идентификатор пользователя.
+     * @param text   - текст поискового запроса. Не может быть пустым либо содержать только пробелы.
      * @return Список найденных вещей. При пустом запросе либо отсутствии результатов возвращается пустой список.
      */
     @GetMapping(path = "/search")
-    public ResponseEntity<Collection<ItemDto>> searchAvailableItems(@RequestParam String text) {
-        if (text.trim().length() > 0) {
-            return ResponseEntity.ok(service.searchAvailableItems(text).stream()
-                    .map(mapper::mapToDto)
-                    .collect(Collectors.toList()));
+    public ResponseEntity<Collection<ItemDto>> searchAvailableItems(
+            @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
+            @RequestParam String text) {
 
-        } else return ResponseEntity.ok(List.of());
+        return ResponseEntity.ok(itemService.searchAvailableItems(ownerId, text));
     }
 
     /**
@@ -113,43 +111,7 @@ public class ItemController {
     public ResponseEntity<ItemDto> updateItem(@RequestHeader(name = "X-Sharer-User-Id") long ownerId,
                                               @PathVariable long itemId,
                                               @RequestBody ItemDto itemDto) {
-        Map<UpdatedItemFields, Boolean> targetFields = new HashMap<>();
-        boolean empty = true;
-        ResponseEntity<ItemDto> response;
-        Item item;
 
-        if (itemDto.getName() != null) {
-            targetFields.put(UpdatedItemFields.NAME, true);
-            empty = false;
-        } else {
-            targetFields.put(UpdatedItemFields.NAME, false);
-        }
-
-        if (itemDto.getDescription() != null) {
-            targetFields.put(UpdatedItemFields.DESCRIPTION, true);
-            empty = false;
-        } else {
-            targetFields.put(UpdatedItemFields.DESCRIPTION, false);
-        }
-
-        if (itemDto.getAvailable() != null) {
-            targetFields.put(UpdatedItemFields.AVAILABLE, true);
-            empty = false;
-        } else {
-            targetFields.put(UpdatedItemFields.AVAILABLE, false);
-        }
-
-        if (empty) {
-            throw new EmptyItemPatchRequestException("Ошибка обновления вещи: в запросе все поля равны null.");
-        }
-
-        item = mapper.mapToModel(itemDto);
-        item.setItemId(itemId);
-        item.setOwnerId(ownerId);
-        response = ResponseEntity.ok(
-                mapper.mapToDto(service.updateItem(item, targetFields)));
-
-        log.debug("Обновлена вещь: {}", response.getBody());
-        return response;
+        return ResponseEntity.ok(itemService.updateItem(itemDto, itemId, ownerId));
     }
 }
