@@ -202,14 +202,18 @@ public class BookingControllerTest {
         waitingBookingRequest.setStart(waitingBookingRequest.getStart().plusMinutes(1));
         waitingBookingRequest.setEnd(waitingBookingRequest.getEnd().plusMinutes(1));
         BookingDto waitingBooking = addBooking(waitingBookingRequest, bookerId);
-        assertEquals(List.of(waitingBooking), getBookingsByBookerAndStatus(bookerId, BookingStatus.WAITING.toString()));
-        assertEquals(List.of(waitingBooking), getBookingsByOwnerAndStatus(userId, BookingStatus.WAITING.toString()));
+        assertEquals(List.of(waitingBooking),
+                getBookingsByBookerAndStatus(bookerId, BookingStatus.WAITING.toString()));
+        assertEquals(List.of(waitingBooking),
+                getBookingsByOwnerAndStatus(userId, BookingStatus.WAITING.toString()));
 
         BookingDtoRequest rejectedBookingRequest = makeDefaultBookingDtoRequest(item2.getId());
         BookingDto rejectedBooking = addBooking(rejectedBookingRequest, bookerId);
         rejectedBooking = setApproved(userId, rejectedBooking.getId(), false);
-        assertEquals(List.of(rejectedBooking), getBookingsByBookerAndStatus(bookerId, BookingStatus.REJECTED.toString()));
-        assertEquals(List.of(rejectedBooking), getBookingsByOwnerAndStatus(userId, BookingStatus.REJECTED.toString()));
+        assertEquals(List.of(rejectedBooking),
+                getBookingsByBookerAndStatus(bookerId, BookingStatus.REJECTED.toString()));
+        assertEquals(List.of(rejectedBooking),
+                getBookingsByOwnerAndStatus(userId, BookingStatus.REJECTED.toString()));
 
         BookingDtoRequest futureBookingRequest = makeDefaultBookingDtoRequest(item3.getId());
         futureBookingRequest.setStart(futureBookingRequest.getStart().plusDays(1));

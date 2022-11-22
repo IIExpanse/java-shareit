@@ -1,5 +1,6 @@
 package ru.practicum.shareit.booking.mapper;
 
+import lombok.Generated;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import ru.practicum.shareit.booking.dto.BookingDto;
@@ -11,6 +12,7 @@ import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.model.User;
 
 @Mapper(componentModel = "spring")
+@Generated
 public interface BookingMapper {
     @Mapping(source = "bookingDtoRequest.start", target = "startTime")
     @Mapping(source = "bookingDtoRequest.end", target = "endTime")

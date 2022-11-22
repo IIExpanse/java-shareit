@@ -1,5 +1,6 @@
 package ru.practicum.shareit.item.repository;
 
+import lombok.Generated;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -10,6 +11,7 @@ import ru.practicum.shareit.user.model.User;
 import java.util.Collection;
 
 @Repository
+@Generated
 public interface ItemRepository extends JpaRepository<Item, Long>, ItemRepositoryCustom {
 
     boolean existsItemByIdAndAvailableIsTrue(long itemId);

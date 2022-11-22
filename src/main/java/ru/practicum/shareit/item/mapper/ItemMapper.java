@@ -1,5 +1,6 @@
 package ru.practicum.shareit.item.mapper;
 
+import lombok.Generated;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import ru.practicum.shareit.booking.dto.BookingDtoShort;
@@ -10,6 +11,7 @@ import ru.practicum.shareit.request.model.ItemRequest;
 import ru.practicum.shareit.user.model.User;
 
 @Mapper(componentModel = "spring", uses = CommentMapper.class)
+@Generated
 public interface ItemMapper {
 
     @Mapping(source = "itemDto.id", target = "id")
