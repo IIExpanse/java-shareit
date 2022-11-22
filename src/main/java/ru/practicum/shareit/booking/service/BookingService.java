@@ -11,11 +11,11 @@ import java.util.Map;
 
 public interface BookingService {
 
-    boolean isCommentMadeAfterBooking(long bookerId, long itemId);
+    boolean neverMadeBookings(long bookerId, long itemId);
 
     BookingDto addBooking(BookingDtoRequest bookingDtoRequest, long bookerId);
 
-    BookingDto getBookingDto(long requesterId, long bookingId);
+    BookingDto getBookingDto(long bookingId, long requesterId);
 
     Collection<BookingDto> getBookingsByUserAndState(
             Long bookerId, Long ownerId, String state, int startingIndex, int collectionSize);

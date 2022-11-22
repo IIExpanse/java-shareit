@@ -25,6 +25,7 @@ import ru.practicum.shareit.request.service.ItemRequestService;
 import ru.practicum.shareit.user.service.UserService;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -161,14 +162,14 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public CommentDto addComment(CommentDto commentDto, long authorId, long itemId) {
-        if (!bookingService.isCommentMadeAfterBooking(authorId, itemId)) {
+        if (bookingService.neverMadeBookings(authorId, itemId)) {
             throw new CommenterDontHaveBookingException(String.format("Ошибка при добавлении комментария: " +
                     "пользователь с id=%d не оформлял бронирований вещи с id=%d.", authorId, itemId));
         }
 
         Comment comment = commentMapper.mapToModel(
                 commentDto, userService.getUser(authorId), this.getItem(itemId));
-        comment.setCreated(LocalDateTime.now());
+        comment.setCreated(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
         comment = commentRepository.save(comment);
 
         log.debug("Добавлен комментарий: {}", comment);

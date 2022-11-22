@@ -8,12 +8,19 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
+import ru.practicum.shareit.booking.dto.BookingDto;
+import ru.practicum.shareit.booking.dto.BookingDtoRequest;
+import ru.practicum.shareit.booking.exception.CommenterDontHaveBookingException;
+import ru.practicum.shareit.booking.service.BookingService;
+import ru.practicum.shareit.item.comment.dto.CommentDto;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.exception.ItemNotFoundException;
 import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.exception.UserNotFoundException;
 import ru.practicum.shareit.user.service.UserService;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,6 +35,7 @@ public class ItemServiceTest {
 
     private UserService userService;
     private ItemService itemService;
+    private BookingService bookingService;
 
     @Test
     public void addItemTest() {
@@ -67,6 +75,57 @@ public class ItemServiceTest {
         UserDto user = userService.addUser(makeDefaultUser());
 
         assertThrows(ItemNotFoundException.class, () -> itemService.getItemDto(1L, user.getId()));
+    }
+
+    @Test
+    public void addCommentTest() {
+        UserDto user = userService.addUser(makeDefaultUser());
+        UserDto booker = userService.addUser(UserDto.builder().name("Sam").email("new@mail.ru").build());
+        long userId = user.getId();
+        long bookerId = booker.getId();
+
+        ItemDto item = itemService.addItem(makeDefaultItem(), userId);
+        long itemId = item.getId();
+
+        BookingDtoRequest request = makeDefaultBookingDtoRequest(itemId);
+
+        BookingDto bookingDto = bookingService.addBooking(request, bookerId);
+        bookingService.setApproval(bookingDto.getId(), true, userId);
+
+        CommentDto comment = makeDefaultComment();
+        comment = itemService.addComment(comment, bookerId, itemId);
+
+        assertEquals(List.of(comment), itemService.getItemDto(itemId, userId).getComments());
+    }
+
+    @Test
+    public void shouldThrowExceptionForCommenterWithoutBooking() {
+        UserDto user = userService.addUser(makeDefaultUser());
+        UserDto booker = userService.addUser(UserDto.builder().name("Sam").email("new@mail.ru").build());
+        long userId = user.getId();
+        long bookerId = booker.getId();
+
+        ItemDto item = itemService.addItem(makeDefaultItem(), userId);
+        long itemId = item.getId();
+
+        CommentDto comment = makeDefaultComment();
+
+        assertThrows(CommenterDontHaveBookingException.class,
+                () -> itemService.addComment(comment, bookerId, itemId));
+    }
+
+    private BookingDtoRequest makeDefaultBookingDtoRequest(long itemId) {
+        return BookingDtoRequest.builder()
+                .itemId(itemId)
+                .start(LocalDateTime.now())
+                .end(LocalDateTime.now().plusMinutes(1).plusDays(1).truncatedTo(ChronoUnit.SECONDS))
+                .build();
+    }
+
+    private CommentDto makeDefaultComment() {
+        return CommentDto.builder()
+                .text("some smart thoughts")
+                .build();
     }
 
     private ItemDto makeDefaultItem() {

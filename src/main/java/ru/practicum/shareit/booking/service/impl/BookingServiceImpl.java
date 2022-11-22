@@ -39,8 +39,8 @@ public class BookingServiceImpl implements BookingService {
     private final ItemRepository itemRepository;
 
     @Override
-    public boolean isCommentMadeAfterBooking(long bookerId, long itemId) {
-        return !bookingRepository.getApprovedBookingsNotInFuture(bookerId, itemId).isEmpty();
+    public boolean neverMadeBookings(long bookerId, long itemId) {
+        return bookingRepository.getApprovedBookingsNotInFuture(bookerId, itemId).isEmpty();
     }
 
     @Override

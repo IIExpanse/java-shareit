@@ -15,9 +15,14 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
+import ru.practicum.shareit.booking.dto.BookingDto;
+import ru.practicum.shareit.booking.dto.BookingDtoRequest;
+import ru.practicum.shareit.item.comment.dto.CommentDto;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.user.dto.UserDto;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,7 +44,7 @@ public class ItemControllerTest {
 
     @Test
     public void addItemTest() throws Exception {
-        addDefaultUser();
+        addDefaultUser(null);
         ItemDto itemDto = makeDefaultItemDto();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
@@ -73,8 +78,33 @@ public class ItemControllerTest {
     }
 
     @Test
+    public void shouldThrowExceptionForAddingCommentWithoutCurrentOrPastBooking() throws Exception {
+        UserDto user = addDefaultUser(null);
+        UserDto booker = addDefaultUser("new@mail.ru");
+        long userId = user.getId();
+        long bookerId = booker.getId();
+
+        ItemDto item = addItem(makeDefaultItemDto(), userId);
+        long itemId = item.getId();
+
+        BookingDto bookingDto = addBooking(makeDefaultBookingDtoRequest(itemId), bookerId);
+        setApproved(userId, bookingDto.getId());
+
+        CommentDto comment = CommentDto.builder().text("some text").build();
+
+        MockHttpServletResponse response = mvc.perform(
+                        post(getDefaultUri() + "/" + itemId + "/comment")
+                                .content(mapper.writeValueAsString(comment))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .headers(getDefaultHeader(bookerId)))
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), response.getStatus());
+    }
+
+    @Test
     public void getItemTest() throws Exception {
-        addDefaultUser();
+        addDefaultUser(null);
         ItemDto itemDto = makeDefaultItemDto();
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
@@ -97,7 +127,7 @@ public class ItemControllerTest {
 
     @Test
     public void shouldThrowExceptionForNotFoundItem() throws Exception {
-        addDefaultUser();
+        addDefaultUser(null);
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
@@ -112,7 +142,7 @@ public class ItemControllerTest {
 
     @Test
     public void searchAvailableItemsTest() throws Exception {
-        addDefaultUser();
+        addDefaultUser(null);
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
@@ -165,7 +195,7 @@ public class ItemControllerTest {
 
     @Test
     public void updateItemTest() throws Exception {
-        addDefaultUser();
+        addDefaultUser(null);
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
@@ -200,7 +230,7 @@ public class ItemControllerTest {
 
     @Test
     public void shouldThrowExceptionForPatchRequestWithNullOnlyValues() throws Exception {
-        addDefaultUser();
+        addDefaultUser(null);
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Sharer-User-Id", "1");
 
@@ -228,7 +258,7 @@ public class ItemControllerTest {
 
     @Test
     public void shouldThrowExceptionForWrongOwnerUpdatingItem() throws Exception {
-        UserDto userDto = addDefaultUser();
+        UserDto userDto = addDefaultUser(null);
         userDto.setEmail("new@mail.ru");
         mvc.perform(
                 post(String.format("http://localhost:%d/users", port))
@@ -269,6 +299,51 @@ public class ItemControllerTest {
         return String.format("http://localhost:%d/items", port);
     }
 
+    private HttpHeaders getDefaultHeader(Long ownerId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Sharer-User-Id", ownerId.toString());
+
+        return headers;
+    }
+
+    private void setApproved(long requesterId, long bookingId) throws Exception {
+        MockHttpServletResponse response = mvc.perform(
+                        patch(String.format("http://localhost:%d/bookings", port) + "/" + bookingId)
+                                .headers(getDefaultHeader(requesterId))
+                                .param("approved", ((Boolean) true).toString()))
+                .andReturn().getResponse();
+        mapper.readValue(response.getContentAsString(), BookingDto.class);
+    }
+
+    private BookingDto addBooking(BookingDtoRequest bookingDtoRequest, long bookerId) throws Exception {
+        MockHttpServletResponse response = mvc.perform(
+                        post(String.format("http://localhost:%d/bookings", port))
+                                .content(mapper.writeValueAsString(bookingDtoRequest))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .headers(getDefaultHeader(bookerId)))
+                .andReturn().getResponse();
+        return mapper.readValue(response.getContentAsString(), BookingDto.class);
+    }
+
+    private BookingDtoRequest makeDefaultBookingDtoRequest(long itemId) {
+        return BookingDtoRequest.builder()
+                .start(LocalDateTime.now().plusDays(1))
+                .end(LocalDateTime.now().plusDays(2).truncatedTo(ChronoUnit.SECONDS))
+                .itemId(itemId)
+                .build();
+    }
+
+    private ItemDto addItem(ItemDto itemDto, long ownerId) throws Exception {
+        MockHttpServletResponse response = mvc.perform(
+                        post(getDefaultUri())
+                                .headers(getDefaultHeader(ownerId))
+                                .content(mapper.writeValueAsString(itemDto))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
+
+        return mapper.readValue(response.getContentAsString(), ItemDto.class);
+    }
+
     private ItemDto makeDefaultItemDto() {
         return ItemDto.builder()
                 .id(1L)
@@ -279,17 +354,22 @@ public class ItemControllerTest {
                 .build();
     }
 
-    private UserDto addDefaultUser() throws Exception {
+    private UserDto addDefaultUser(String email) throws Exception {
+        if (email == null) {
+            email = "tomsmail@mail.ru";
+        }
+
         UserDto userDto = UserDto.builder()
                 .name("Tom")
-                .email("tomsmail@mail.ru")
+                .email(email)
                 .build();
 
-        mvc.perform(
+        MockHttpServletResponse response = mvc.perform(
                 post(String.format("http://localhost:%d/users", port))
                         .content(mapper.writeValueAsString(userDto))
-                        .contentType(MediaType.APPLICATION_JSON));
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andReturn().getResponse();
 
-        return userDto;
+        return mapper.readValue(response.getContentAsString(), UserDto.class);
     }
 }
