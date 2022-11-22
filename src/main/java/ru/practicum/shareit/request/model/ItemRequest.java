@@ -19,6 +19,7 @@ import java.util.Set;
 @Builder
 @Entity
 @Table(name = "requests")
+@Generated
 public class ItemRequest {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
