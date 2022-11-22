@@ -10,10 +10,7 @@ import org.springframework.test.context.jdbc.Sql;
 import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.booking.dto.BookingDtoRequest;
 import ru.practicum.shareit.booking.dto.BookingStatus;
-import ru.practicum.shareit.booking.exception.BookingNotFoundException;
-import ru.practicum.shareit.booking.exception.CantBookOwnedItemException;
-import ru.practicum.shareit.booking.exception.ItemNotAvailableForBookingException;
-import ru.practicum.shareit.booking.exception.TimeWindowOccupiedException;
+import ru.practicum.shareit.booking.exception.*;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.user.dto.UserDto;
@@ -48,6 +45,22 @@ public class BookingServiceTest {
         BookingDto booking = service.addBooking(makeDefaultBookingDtoRequest(item.getId()), booker.getId());
 
         assertEquals(booking, service.getBookingDto(booking.getId(), booker.getId()));
+    }
+
+    @Test
+    public void shouldThrowExceptionForAddingBookingWithEndBeforeStart() {
+        UserDto user = userService.addUser(makeDefaultUser());
+        ItemDto item = itemService.addItem(makeDefaultItem(), user.getId());
+
+        UserDto booker = makeDefaultUser();
+        booker.setEmail("new@mail.ru");
+        booker = userService.addUser(booker);
+
+        BookingDtoRequest request = makeDefaultBookingDtoRequest(item.getId());
+        request.setEnd(request.getStart().minusDays(1));
+
+        UserDto finalBooker = booker;
+        assertThrows(EndBeforeOrEqualsStartException.class, () -> service.addBooking(request, finalBooker.getId()));
     }
 
     @Test
@@ -129,7 +142,7 @@ public class BookingServiceTest {
     }
 
     @Test
-    public void getBookingsByBookerIdAndStatusSortedByDateDescTest() {
+    public void getBookingsByBookerOrOwnerAndStatusTest() {
         UserDto user = userService.addUser(makeDefaultUser());
         long userId = user.getId();
         ItemDto item1 = itemService.addItem(makeDefaultItem(), userId);
@@ -147,47 +160,42 @@ public class BookingServiceTest {
         waitingBookingRequest.setStart(waitingBookingRequest.getStart().plusMinutes(1));
         waitingBookingRequest.setEnd(waitingBookingRequest.getEnd().plusMinutes(1));
         BookingDto waitingBooking = service.addBooking(waitingBookingRequest, bookerId);
-        assertEquals(List.of(waitingBooking), service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.WAITING.toString()));
+        assertEquals(List.of(waitingBooking), service.getBookingsByUserAndState(
+                bookerId, null, BookingStatus.WAITING.toString(), 0, Integer.MAX_VALUE));
 
         BookingDtoRequest rejectedBookingRequest = makeDefaultBookingDtoRequest(item2.getId());
         BookingDto rejectedBooking = service.addBooking(rejectedBookingRequest, bookerId);
         rejectedBooking = service.setApproval(rejectedBooking.getId(), false, userId);
-        assertEquals(List.of(rejectedBooking), service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.REJECTED.toString()));
+        assertEquals(List.of(rejectedBooking), service.getBookingsByUserAndState(
+                bookerId, null, BookingStatus.REJECTED.toString(), 0, Integer.MAX_VALUE));
 
         BookingDtoRequest pastBookingRequest = makeDefaultBookingDtoRequest(item3.getId());
         pastBookingRequest.setStart(pastBookingRequest.getStart().minusDays(3));
         pastBookingRequest.setEnd(pastBookingRequest.getEnd().minusDays(3));
         BookingDto pastBooking = service.addBooking(pastBookingRequest, bookerId);
         pastBooking = service.setApproval(pastBooking.getId(), true, userId);
-        assertEquals(List.of(pastBooking), service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.PAST.toString()));
+        assertEquals(List.of(pastBooking), service.getBookingsByUserAndState(
+                bookerId, null, BookingStatus.PAST.toString(), 0, Integer.MAX_VALUE));
 
         BookingDtoRequest futureBookingRequest = makeDefaultBookingDtoRequest(item4.getId());
         futureBookingRequest.setStart(futureBookingRequest.getStart().plusDays(1));
         futureBookingRequest.setEnd(futureBookingRequest.getEnd().plusDays(1));
         BookingDto futureBooking = service.addBooking(futureBookingRequest, bookerId);
         futureBooking = service.setApproval(futureBooking.getId(), true, userId);
-        assertEquals(List.of(futureBooking, waitingBooking, rejectedBooking), service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.FUTURE.toString()));
+        assertEquals(List.of(futureBooking, waitingBooking, rejectedBooking), service.getBookingsByUserAndState(
+                bookerId, null, BookingStatus.FUTURE.toString(), 0, Integer.MAX_VALUE));
 
         BookingDtoRequest currentBookingRequest = makeDefaultBookingDtoRequest(item5.getId());
         currentBookingRequest.setStart(currentBookingRequest.getStart().minusHours(1));
         currentBookingRequest.setEnd(currentBookingRequest.getEnd().plusDays(1));
         BookingDto currentBooking = service.addBooking(currentBookingRequest, bookerId);
         currentBooking = service.setApproval(currentBooking.getId(), true, userId);
-        assertEquals(List.of(currentBooking), service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.CURRENT.toString()));
+        assertEquals(List.of(currentBooking), service.getBookingsByUserAndState(
+                bookerId, null, BookingStatus.CURRENT.toString(), 0, Integer.MAX_VALUE));
 
-        futureBooking = service.getBookingDto(futureBooking.getId(), bookerId);
-        waitingBooking = service.getBookingDto(waitingBooking.getId(), bookerId);
-        rejectedBooking = service.getBookingDto(rejectedBooking.getId(), bookerId);
-        currentBooking = service.getBookingDto(currentBooking.getId(), bookerId);
-        pastBooking = service.getBookingDto(pastBooking.getId(), bookerId);
         assertEquals(List.of(futureBooking, waitingBooking, rejectedBooking, currentBooking, pastBooking),
-                service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                bookerId, null, BookingStatus.ALL.toString()));
+                service.getBookingsByUserAndState(
+                bookerId, null, BookingStatus.ALL.toString(), 0, Integer.MAX_VALUE));
     }
 
     @Test
@@ -201,8 +209,12 @@ public class BookingServiceTest {
         BookingDto booking = service.addBooking(makeDefaultBookingDtoRequest(item.getId()), booker.getId());
         service.setApproval(booking.getId(), true, user.getId());
 
-        assertTrue(service.getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-                booker.getId(), null, BookingStatus.WAITING.toString()).isEmpty());
+        assertTrue(service.getBookingsByUserAndState(
+                booker.getId(),
+                null,
+                BookingStatus.WAITING.toString(),
+                0,
+                Integer.MAX_VALUE).isEmpty());
     }
 
     private BookingDtoRequest makeDefaultBookingDtoRequest(long itemId) {

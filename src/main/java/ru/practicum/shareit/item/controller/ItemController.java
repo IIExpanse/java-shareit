@@ -15,6 +15,8 @@ import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.user.exception.UserNotFoundException;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
 import java.util.Collection;
 
 @Validated
@@ -60,7 +62,6 @@ public class ItemController {
     @GetMapping(path = "/{id}")
     public ResponseEntity<ItemDto> getItem(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
                                            @PathVariable long id) {
-
         return ResponseEntity.ok(itemService.getItemDto(id, requesterId));
     }
 
@@ -71,9 +72,15 @@ public class ItemController {
      * @return Список вещей, которыми владеет пользователь с указанным ownerId. Может быть пустым.
      */
     @GetMapping
-    public ResponseEntity<Collection<ItemDto>> getOwnerItems(@RequestHeader(name = "X-Sharer-User-Id") long ownerId) {
+    public ResponseEntity<Collection<ItemDto>> getOwnerItems(
+            @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
+            @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
+            @RequestParam(required = false) @Positive Integer size) {
 
-        return ResponseEntity.ok(itemService.getOwnerItems(ownerId));
+        if (size == null) {
+            size = Integer.MAX_VALUE;
+        }
+        return ResponseEntity.ok(itemService.getOwnerItems(ownerId, from, size));
     }
 
     /**
@@ -87,9 +94,14 @@ public class ItemController {
     @GetMapping(path = "/search")
     public ResponseEntity<Collection<ItemDto>> searchAvailableItems(
             @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
-            @RequestParam String text) {
+            @RequestParam String text,
+            @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
+            @RequestParam(required = false) @Positive Integer size) {
 
-        return ResponseEntity.ok(itemService.searchAvailableItems(ownerId, text));
+        if (size == null) {
+            size = Integer.MAX_VALUE;
+        }
+        return ResponseEntity.ok(itemService.searchAvailableItems(ownerId, text, from, size));
     }
 
     /**

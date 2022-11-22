@@ -25,6 +25,7 @@ public class ItemDto {
     private String description;
     @NotNull(message = "Доступность вещи для бронирования не может быть null.")
     private Boolean available;
+    private Long requestId;
     private BookingDtoShort lastBooking;
     private BookingDtoShort nextBooking;
     private List<CommentDto> comments;

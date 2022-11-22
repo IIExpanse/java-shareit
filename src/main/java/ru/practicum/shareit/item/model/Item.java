@@ -4,6 +4,7 @@ import lombok.*;
 import org.hibernate.Hibernate;
 import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.item.comment.model.Comment;
+import ru.practicum.shareit.request.model.ItemRequest;
 import ru.practicum.shareit.user.model.User;
 
 import javax.persistence.*;
@@ -33,6 +34,9 @@ public class Item {
     private String description;
     @Column(name = "available")
     private Boolean available;
+    @ManyToOne
+    @JoinColumn(name = "for_request", referencedColumnName = "request_id")
+    private ItemRequest request;
     @OneToMany(mappedBy = "item")
     @ToString.Exclude
     private Set<Booking> bookings;

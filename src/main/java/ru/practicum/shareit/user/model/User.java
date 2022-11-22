@@ -5,6 +5,7 @@ import org.hibernate.Hibernate;
 import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.item.comment.model.Comment;
 import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.request.model.ItemRequest;
 
 import javax.persistence.*;
 import java.util.Objects;
@@ -36,6 +37,9 @@ public class User {
     @OneToMany(mappedBy = "author")
     @ToString.Exclude
     private Set<Comment> comments;
+    @OneToMany(mappedBy = "requester")
+    @ToString.Exclude
+    private Set<ItemRequest> requests;
 
     @Override
     public boolean equals(Object o) {

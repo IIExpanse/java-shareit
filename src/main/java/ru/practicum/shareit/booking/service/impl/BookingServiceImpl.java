@@ -115,8 +115,8 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public Collection<BookingDto> getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-            Long bookerId, Long ownerId, String state) {
+    public Collection<BookingDto> getBookingsByUserAndState(
+            Long bookerId, Long ownerId, String state, int startingIndex, int collectionSize) {
         if (ownerId != null && userService.userNotFound(ownerId)) {
             throw new UserNotFoundException(
                     String.format("Ошибка при получении бронирований по владельцу вещи: " +
@@ -154,6 +154,8 @@ public class BookingServiceImpl implements BookingService {
             collection = bookingRepository.getCurrentBookings(bookerId, ownerId);
         }
         return collection.stream()
+                .skip(startingIndex)
+                .limit(collectionSize)
                 .map(booking -> mapper.mapToDto(booking, this.determineStatus(booking)))
                 .collect(Collectors.toCollection(ArrayList::new));
 

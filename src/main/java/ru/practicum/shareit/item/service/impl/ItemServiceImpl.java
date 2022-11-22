@@ -20,6 +20,8 @@ import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.item.service.ActualItemBooking;
 import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.item.service.UpdatedItemFields;
+import ru.practicum.shareit.request.model.ItemRequest;
+import ru.practicum.shareit.request.service.ItemRequestService;
 import ru.practicum.shareit.user.service.UserService;
 
 import java.time.LocalDateTime;
@@ -38,12 +40,23 @@ public class ItemServiceImpl implements ItemService {
     private final CommentRepository commentRepository;
     private final BookingService bookingService;
     private final UserService userService;
+    private final ItemRequestService requestService;
     private final ItemMapper itemMapper;
     private final CommentMapper commentMapper;
 
     @Override
     public ItemDto addItem(ItemDto itemDto, long ownerId) {
-        Item item = itemMapper.mapToModel(itemDto, userService.getUser(ownerId));
+        Item item;
+        ItemRequest request;
+        Long requestId = itemDto.getRequestId();
+
+        if (requestId != null) {
+            request = requestService.getRequest(requestId);
+        } else {
+            request = null;
+        }
+
+        item = itemMapper.mapToModel(itemDto, userService.getUser(ownerId), request);
         item.setId(null);
         item = itemRepository.save(item);
 
@@ -76,27 +89,31 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public Collection<ItemDto> getOwnerItems(long ownerId) {
-
+    public Collection<ItemDto> getOwnerItems(long ownerId,  int startingIndex, int collectionSize) {
         return itemRepository.findAllByOwnerId(ownerId).stream()
+                .sorted(Comparator.comparing(Item::getId))
+                .skip(startingIndex)
+                .limit(collectionSize)
                 .map(item -> {
                     Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap =
                             bookingService.getLastAndNextBookingByItem(item, ownerId);
                     return itemMapper.mapToDto(item, itemDtoBookingsMap.get(LAST), itemDtoBookingsMap.get(NEXT));
                 })
-                .sorted(Comparator.comparing(ItemDto::getId))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public Collection<ItemDto> searchAvailableItems(long userId, String text) {
+    public Collection<ItemDto> searchAvailableItems(long userId, String text,  int startingIndex, int collectionSize) {
         if (!text.isEmpty()) {
             return itemRepository.searchAvailableItemsByNameAndDescription(text).stream()
+                    .sorted(Comparator.comparing(Item::getId))
+                    .skip(startingIndex)
+                    .limit(collectionSize)
                     .map(item -> {
-                        Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap = bookingService.getLastAndNextBookingByItem(item, userId);
+                        Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap = bookingService
+                                .getLastAndNextBookingByItem(item, userId);
                         return itemMapper.mapToDto(item, itemDtoBookingsMap.get(LAST), itemDtoBookingsMap.get(NEXT));
                     })
-                    .sorted(Comparator.comparing(ItemDto::getId))
                     .collect(Collectors.toList());
         } else return List.of();
     }
@@ -133,7 +150,7 @@ public class ItemServiceImpl implements ItemService {
             throw new EmptyItemPatchRequestException("Ошибка обновления вещи: в запросе все поля равны null.");
         }
 
-        item = itemMapper.mapToModel(itemDto, userService.getUser(ownerId));
+        item = itemMapper.mapToModel(itemDto, userService.getUser(ownerId), null);
         item.setId(itemId);
         item = itemRepository.updateItem(item, targetFields);
         itemDtoBookingsMap = bookingService.getLastAndNextBookingByItem(item, ownerId);
