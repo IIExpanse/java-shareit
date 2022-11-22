@@ -114,6 +114,26 @@ public class ItemServiceTest {
                 () -> itemService.addComment(comment, bookerId, itemId));
     }
 
+    @Test
+    public void getOwnerItemsTest() {
+        UserDto userDto1 = makeDefaultUser();
+        userDto1 = userService.addUser(userDto1);
+
+        UserDto userDto2 = makeDefaultUser();
+        userDto2.setEmail("new@mail.ru");
+        userDto2 = userService.addUser(userDto2);
+
+        ItemDto item1 = itemService.addItem(makeDefaultItem(), userDto1.getId());
+        item1.setComments(List.of());
+        ItemDto item2 = itemService.addItem(makeDefaultItem(), userDto1.getId());
+        item2.setComments(List.of());
+
+        assertEquals(List.of(item1, item2),
+                itemService.getOwnerItems(userDto1.getId(), 0, Integer.MAX_VALUE));
+        assertEquals(List.of(),
+                itemService.getOwnerItems(userDto2.getId(), 0, Integer.MAX_VALUE));
+    }
+
     private BookingDtoRequest makeDefaultBookingDtoRequest(long itemId) {
         return BookingDtoRequest.builder()
                 .itemId(itemId)

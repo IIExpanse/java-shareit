@@ -35,6 +35,7 @@ import static ru.practicum.shareit.item.service.ActualItemBooking.NEXT;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;
@@ -66,7 +67,6 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @Transactional
     public ItemDto getItemDto(long id, long requesterId) {
         Item item = this.getItem(id);
         Map<ActualItemBooking, BookingDtoShort> lastAndNextBooking =
