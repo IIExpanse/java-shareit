@@ -2,6 +2,7 @@ package ru.practicum.shareit.request.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.request.dto.ItemRequestDto;
@@ -77,16 +78,21 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     }
 
     @Override
-    public Collection<ItemRequestDto> getOtherUsersRequests(long requesterId, int startingIndex, int collectionSize) {
+    public Collection<ItemRequestDto> getOtherUsersRequests(
+            long requesterId, int startingIndex, Integer collectionSize) {
+        if (collectionSize == null) {
+            collectionSize = Integer.MAX_VALUE;
+        }
+
         if (userService.userNotFound(requesterId)) {
             throw new UserNotFoundException(
                     String.format("Ошибка при получении запросов других пользователей на добавление вещи: " +
                             "пользователь с id=%d не найден", requesterId));
         }
 
-        return repository.findAllByRequesterIdNotOrderByCreatedDesc(requesterId).stream()
+        return repository.findAllByRequesterIdNotOrderByCreatedDesc(
+                requesterId, Pageable.ofSize(startingIndex + collectionSize)).stream()
                 .skip(startingIndex)
-                .limit(collectionSize)
                 .map(mapper::mapToDto)
                 .collect(Collectors.toList());
     }

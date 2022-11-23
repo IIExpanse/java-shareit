@@ -61,6 +61,7 @@ public class ItemRequestController {
     @GetMapping
     public ResponseEntity<Collection<ItemRequestDto>> getOwnItemRequests(
             @RequestHeader(name = "X-Sharer-User-Id") long requesterId) {
+
         return ResponseEntity.ok(service.getOwnItemRequests(requesterId));
     }
 
@@ -79,9 +80,7 @@ public class ItemRequestController {
             @RequestHeader(name = "X-Sharer-User-Id") long requesterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
             @RequestParam(required = false) @Positive Integer size) {
-        if (size == null) {
-            size = Integer.MAX_VALUE;
-        }
+
         return ResponseEntity.ok(service.getOtherUsersRequests(requesterId, from, size));
     }
 }

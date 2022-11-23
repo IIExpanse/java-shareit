@@ -15,5 +15,5 @@ public interface ItemRequestService {
 
     Collection<ItemRequestDto> getOwnItemRequests(long requesterId);
 
-    Collection<ItemRequestDto> getOtherUsersRequests(long requesterId, int startingIndex, int collectionSize);
+    Collection<ItemRequestDto> getOtherUsersRequests(long requesterId, int startingIndex, Integer collectionSize);
 }

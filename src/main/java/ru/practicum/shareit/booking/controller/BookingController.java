@@ -79,9 +79,6 @@ public class BookingController {
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
             @RequestParam(required = false) @Positive Integer size) {
 
-        if (size == null) {
-            size = Integer.MAX_VALUE;
-        }
         return ResponseEntity.ok(bookingService.getBookingsByUserAndState(
                 bookerId, null, state, from, size));
     }
@@ -103,9 +100,6 @@ public class BookingController {
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
             @RequestParam(required = false) @Positive Integer size) {
 
-        if (size == null) {
-            size = Integer.MAX_VALUE;
-        }
         return ResponseEntity.ok(bookingService.getBookingsByUserAndState(
                 null, ownerId, state, from, size));
     }

@@ -89,9 +89,6 @@ public class ItemController {
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
             @RequestParam(required = false) @Positive Integer size) {
 
-        if (size == null) {
-            size = Integer.MAX_VALUE;
-        }
         return ResponseEntity.ok(itemService.getOwnerItems(ownerId, from, size));
     }
 
@@ -110,9 +107,6 @@ public class ItemController {
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
             @RequestParam(required = false) @Positive Integer size) {
 
-        if (size == null) {
-            size = Integer.MAX_VALUE;
-        }
         return ResponseEntity.ok(itemService.searchAvailableItems(ownerId, text, from, size));
     }
 

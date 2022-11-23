@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
 import ru.practicum.shareit.request.model.ItemRequest;
@@ -33,7 +34,9 @@ public class ItemRequestRepositoryTest {
         requester = userRepository.save(requester);
 
         ItemRequest request1 = requestRepository.save(makeDefaultRequest(requester));
-        ItemRequest request2 = requestRepository.save(makeDefaultRequest(requester));
+        ItemRequest request2 = makeDefaultRequest(requester);
+        request2.setCreated(request2.getCreated().plusDays(1));
+        request2 = requestRepository.save(request2);
 
         assertEquals(List.of(request2, request1),
                 requestRepository.findAllByRequesterIdOrderByCreatedDesc(requester.getId()));
@@ -52,7 +55,8 @@ public class ItemRequestRepositoryTest {
         requestRepository.save(makeDefaultRequest(requester2));
 
         assertEquals(List.of(request1),
-                requestRepository.findAllByRequesterIdNotOrderByCreatedDesc(requester2.getId()));
+                requestRepository.findAllByRequesterIdNotOrderByCreatedDesc(
+                        requester2.getId(), Pageable.unpaged()).getContent());
     }
 
     private ItemRequest makeDefaultRequest(User requester) {

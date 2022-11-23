@@ -18,7 +18,7 @@ public interface BookingService {
     BookingDto getBookingDto(long bookingId, long requesterId);
 
     Collection<BookingDto> getBookingsByUserAndState(
-            Long bookerId, Long ownerId, String state, int startingIndex, int collectionSize);
+            Long bookerId, Long ownerId, String state, int startingIndex, Integer collectionSize);
 
     BookingDto setApproval(long bookingId, boolean approved, long requesterId);
 

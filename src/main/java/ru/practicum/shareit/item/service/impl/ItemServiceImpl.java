@@ -2,6 +2,7 @@ package ru.practicum.shareit.item.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.dto.BookingDtoShort;
@@ -90,11 +91,15 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public Collection<ItemDto> getOwnerItems(long ownerId,  int startingIndex, int collectionSize) {
-        return itemRepository.findAllByOwnerId(ownerId).stream()
+    public Collection<ItemDto> getOwnerItems(long ownerId,  int startingIndex, Integer collectionSize) {
+        if (collectionSize == null) {
+            collectionSize = Integer.MAX_VALUE;
+        }
+
+        return itemRepository.findAllByOwnerId(
+                ownerId, Pageable.ofSize(startingIndex + collectionSize)).stream()
                 .sorted(Comparator.comparing(Item::getId))
                 .skip(startingIndex)
-                .limit(collectionSize)
                 .map(item -> {
                     Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap =
                             bookingService.getLastAndNextBookingByItem(item, ownerId);
@@ -104,12 +109,17 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public Collection<ItemDto> searchAvailableItems(long userId, String text,  int startingIndex, int collectionSize) {
+    public Collection<ItemDto> searchAvailableItems(
+            long userId, String text,  int startingIndex, Integer collectionSize) {
+        if (collectionSize == null) {
+            collectionSize = Integer.MAX_VALUE;
+        }
+
         if (!text.isEmpty()) {
-            return itemRepository.searchAvailableItemsByNameAndDescription(text).stream()
+            return itemRepository.searchAvailableItemsByNameAndDescription(
+                    text, Pageable.ofSize(startingIndex + collectionSize)).stream()
                     .sorted(Comparator.comparing(Item::getId))
                     .skip(startingIndex)
-                    .limit(collectionSize)
                     .map(item -> {
                         Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap = bookingService
                                 .getLastAndNextBookingByItem(item, userId);
