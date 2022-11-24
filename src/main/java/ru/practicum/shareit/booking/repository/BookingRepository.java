@@ -1,24 +1,28 @@
 package ru.practicum.shareit.booking.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import lombok.Generated;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.stereotype.Repository;
 import ru.practicum.shareit.booking.model.Booking;
 
 import java.util.Collection;
 
 @Repository
-public interface BookingRepository extends JpaRepository<Booking, Long> {
+@Generated
+public interface BookingRepository extends PagingAndSortingRepository<Booking, Long> {
 
-    Collection<Booking> getAllByBookerIdOrItemOwnerIdOrderByStartTimeDesc(Long bookerId, Long ownerId);
+    Page<Booking> getAllByBookerIdOrItemOwnerIdOrderByStartTimeDesc(Long bookerId, Long ownerId, Pageable pageable);
 
     @Query("SELECT b FROM Booking b " +
             "WHERE (b.booker.id = ?1 OR b.item.owner.id = ?2) " +
             "AND (b.approved = ?3 OR ?3 IS NULL AND b.approved IS NULL)" +
             "ORDER BY b.startTime DESC"
     )
-    Collection<Booking> getWaitingOrRejectedBookings(
-            Long bookerId, Long ownerId, Boolean approved);
+    Page<Booking> getWaitingOrRejectedBookings(
+            Long bookerId, Long ownerId, Boolean approved, Pageable pageable);
 
     @Query("SELECT b FROM Booking b " +
             "WHERE (b.booker.id = ?1 OR b.item.owner.id = ?2) " +
@@ -26,7 +30,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             "AND CURRENT_TIMESTAMP > b.endTime " +
             "ORDER BY b.startTime DESC"
     )
-    Collection<Booking> getPastBookingsByBookerIdOrOwnerId(Long bookerId, Long ownerId);
+    Page<Booking> getPastBookingsByBookerIdOrOwnerId(Long bookerId, Long ownerId, Pageable pageable);
 
     @Query("SELECT b FROM Booking b " +
             "WHERE b.item.id = ?1 " +
@@ -41,14 +45,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             "AND CURRENT_TIMESTAMP < b.endTime " +
             "ORDER BY b.startTime DESC"
     )
-    Collection<Booking> getCurrentBookings(Long bookerId, Long ownerId);
+    Page<Booking> getCurrentBookings(Long bookerId, Long ownerId, Pageable pageable);
 
     @Query("SELECT b FROM Booking b " +
             "WHERE (b.booker.id = ?1 OR b.item.owner.id = ?2) " +
             "AND CURRENT_TIMESTAMP < b.startTime " +
             "ORDER BY b.startTime DESC"
     )
-    Collection<Booking> getFutureBookings(Long bookerId, Long ownerId);
+    Page<Booking> getFutureBookings(Long bookerId, Long ownerId, Pageable pageable);
 
     Collection<Booking> getAllByItemOwnerId(long ownerId);
 

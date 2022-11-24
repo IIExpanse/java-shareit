@@ -2,17 +2,18 @@ package ru.practicum.shareit.booking.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.booking.dto.BookingDtoRequest;
 import ru.practicum.shareit.booking.dto.BookingDtoShort;
+import ru.practicum.shareit.booking.dto.BookingStatus;
 import ru.practicum.shareit.booking.exception.*;
 import ru.practicum.shareit.booking.mapper.BookingMapper;
 import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.booking.repository.BookingRepository;
 import ru.practicum.shareit.booking.service.BookingService;
-import ru.practicum.shareit.booking.dto.BookingStatus;
 import ru.practicum.shareit.item.exception.ItemNotFoundException;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.item.repository.ItemRepository;
@@ -39,8 +40,8 @@ public class BookingServiceImpl implements BookingService {
     private final ItemRepository itemRepository;
 
     @Override
-    public boolean isCommentMadeAfterBooking(long bookerId, long itemId) {
-        return !bookingRepository.getApprovedBookingsNotInFuture(bookerId, itemId).isEmpty();
+    public boolean neverMadeBookings(long bookerId, long itemId) {
+        return bookingRepository.getApprovedBookingsNotInFuture(bookerId, itemId).isEmpty();
     }
 
     @Override
@@ -115,8 +116,8 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public Collection<BookingDto> getBookingsByBookerIdOrOwnerIdAndStatusSortedByDateDesc(
-            Long bookerId, Long ownerId, String state) {
+    public Collection<BookingDto> getBookingsByUserAndState(
+            Long bookerId, Long ownerId, String state, int startingIndex, Integer collectionSize) {
         if (ownerId != null && userService.userNotFound(ownerId)) {
             throw new UserNotFoundException(
                     String.format("Ошибка при получении бронирований по владельцу вещи: " +
@@ -128,32 +129,40 @@ public class BookingServiceImpl implements BookingService {
                     String.format("Ошибка при получении бронирований по автору: " +
                             "пользователя с id=%d не существует.", bookerId));
         }
+        if (collectionSize == null) {
+            collectionSize = Integer.MAX_VALUE;
+        }
+        Pageable pageable = Pageable.ofSize(startingIndex + collectionSize);
         Collection<Booking> collection;
         BookingStatus status;
 
         status = parseStatus(state);
 
         if (status == ALL) {
-            collection = bookingRepository.getAllByBookerIdOrItemOwnerIdOrderByStartTimeDesc(bookerId, ownerId);
+            collection = bookingRepository.getAllByBookerIdOrItemOwnerIdOrderByStartTimeDesc(
+                    bookerId, ownerId, pageable).getContent();
+            log.debug("Получен список: {}", collection);
 
         } else if (status == WAITING) {
             collection = bookingRepository.getWaitingOrRejectedBookings(
-                    bookerId, ownerId, null);
+                    bookerId, ownerId, null, pageable).getContent();
 
         } else if (status == REJECTED) {
             collection = bookingRepository.getWaitingOrRejectedBookings(
-                    bookerId, ownerId, false);
+                    bookerId, ownerId, false, pageable).getContent();
 
         } else if (status == PAST) {
-            collection = bookingRepository.getPastBookingsByBookerIdOrOwnerId(bookerId, ownerId);
+            collection = bookingRepository.getPastBookingsByBookerIdOrOwnerId(
+                    bookerId, ownerId, pageable).getContent();
 
         } else if (status == FUTURE) {
-            collection = bookingRepository.getFutureBookings(bookerId, ownerId);
+            collection = bookingRepository.getFutureBookings(bookerId, ownerId, pageable).getContent();
 
         } else {
-            collection = bookingRepository.getCurrentBookings(bookerId, ownerId);
+            collection = bookingRepository.getCurrentBookings(bookerId, ownerId, pageable).getContent();
         }
         return collection.stream()
+                .skip(startingIndex)
                 .map(booking -> mapper.mapToDto(booking, this.determineStatus(booking)))
                 .collect(Collectors.toCollection(ArrayList::new));
 

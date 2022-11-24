@@ -1,5 +1,8 @@
 package ru.practicum.shareit.user.controller;
 
+import lombok.Generated;
+
+@Generated
 public class UserValidationGroup {
 
     /**

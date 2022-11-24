@@ -18,8 +18,8 @@ public class BookingDtoRequest {
     private Long itemId;
     @Future(message = "Дата начала бронирования должна быть в будущем.")
     @NotNull(message = "Дата начала бронирования не может быть пустой.")
-    LocalDateTime start;
+    private LocalDateTime start;
     @Future(message = "Дата окончания бронирования должна быть в будущем.")
     @NotNull(message = "Дата окончания бронирования не может быть пустой.")
-    LocalDateTime end;
+    private LocalDateTime end;
 }

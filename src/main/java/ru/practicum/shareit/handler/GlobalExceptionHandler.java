@@ -12,6 +12,7 @@ import ru.practicum.shareit.booking.exception.*;
 import ru.practicum.shareit.item.exception.EmptyItemPatchRequestException;
 import ru.practicum.shareit.item.exception.ItemNotFoundException;
 import ru.practicum.shareit.item.exception.WrongOwnerUpdatingItemException;
+import ru.practicum.shareit.request.exception.RequestNotFoundException;
 import ru.practicum.shareit.user.exception.DuplicateEmailException;
 import ru.practicum.shareit.user.exception.EmptyUserPatchRequestException;
 import ru.practicum.shareit.user.exception.UserNotFoundException;
@@ -41,6 +42,10 @@ public class GlobalExceptionHandler {
         if (e instanceof ConstraintViolationException) {
             int start = exceptionMessage.lastIndexOf(":") + 2;
             exceptionMessage = e.getMessage().substring(start);
+
+        } else if (e instanceof MethodArgumentNotValidException) {
+            int start = exceptionMessage.lastIndexOf("[") + 1;
+            exceptionMessage = e.getMessage().substring(start, exceptionMessage.indexOf("]", start));
         }
 
         log.debug(e.getMessage());
@@ -71,7 +76,8 @@ public class GlobalExceptionHandler {
             BookingNotFoundException.class,
             CantViewUnrelatedBookingException.class,
             WrongUserUpdatingBooking.class,
-            CantBookOwnedItemException.class
+            CantBookOwnedItemException.class,
+            RequestNotFoundException.class
     })
     ResponseEntity<ErrorResponse> handleNotFoundExceptions(final RuntimeException e) {
         String exceptionName = e.getClass().getName();

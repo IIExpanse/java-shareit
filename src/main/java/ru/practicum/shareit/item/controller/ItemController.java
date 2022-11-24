@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.shareit.booking.exception.CommenterDontHaveBookingException;
 import ru.practicum.shareit.item.comment.dto.CommentDto;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.exception.EmptyItemPatchRequestException;
@@ -15,6 +16,8 @@ import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.user.exception.UserNotFoundException;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
 import java.util.Collection;
 
 @Validated
@@ -41,6 +44,17 @@ public class ItemController {
         return new ResponseEntity<>(itemService.addItem(itemDto, ownerId), HttpStatus.CREATED);
     }
 
+    /**
+     * Добавление комментария к существующей вещи.
+     *
+     * @param authorId   - идентификатор автора комментария.
+     * @param itemId     идентификатор комментируемой вещи.
+     * @param commentDto - передаваемый объект комментария, должен содержать текст.
+     * @return DTO комментария, внесенного в базу.
+     * @throws CommenterDontHaveBookingException - если оставляющий комментарий пользователь ни разу не бронировал вещь.
+     * @throws ItemNotFoundException             - если вещь с указанным id не найдена.
+     * @throws UserNotFoundException             - если комментатора с указанным id не существует.
+     */
     @PostMapping(path = "/{itemId}/comment")
     public ResponseEntity<CommentDto> addComment(@RequestHeader(name = "X-Sharer-User-Id") long authorId,
                                                  @PathVariable long itemId,
@@ -52,7 +66,7 @@ public class ItemController {
     /**
      * Получение существующей вещи.
      *
-     * @param id     - идентификатор существующей вещи.
+     * @param id          - идентификатор существующей вещи.
      * @param requesterId - идентификатор пользователя.
      * @return DTO существующей вещи.
      * @throws ItemNotFoundException - если вещь с указанным id не найдена.
@@ -60,7 +74,6 @@ public class ItemController {
     @GetMapping(path = "/{id}")
     public ResponseEntity<ItemDto> getItem(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
                                            @PathVariable long id) {
-
         return ResponseEntity.ok(itemService.getItemDto(id, requesterId));
     }
 
@@ -71,9 +84,12 @@ public class ItemController {
      * @return Список вещей, которыми владеет пользователь с указанным ownerId. Может быть пустым.
      */
     @GetMapping
-    public ResponseEntity<Collection<ItemDto>> getOwnerItems(@RequestHeader(name = "X-Sharer-User-Id") long ownerId) {
+    public ResponseEntity<Collection<ItemDto>> getOwnerItems(
+            @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
+            @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
+            @RequestParam(required = false) @Positive Integer size) {
 
-        return ResponseEntity.ok(itemService.getOwnerItems(ownerId));
+        return ResponseEntity.ok(itemService.getOwnerItems(ownerId, from, size));
     }
 
     /**
@@ -81,15 +97,17 @@ public class ItemController {
      * в названии или описании которых присутствует текст поискового запроса (регистр игнорируется).
      *
      * @param ownerId - идентификатор пользователя.
-     * @param text   - текст поискового запроса. Не может быть пустым либо содержать только пробелы.
+     * @param text    - текст поискового запроса. Не может быть пустым либо содержать только пробелы.
      * @return Список найденных вещей. При пустом запросе либо отсутствии результатов возвращается пустой список.
      */
     @GetMapping(path = "/search")
     public ResponseEntity<Collection<ItemDto>> searchAvailableItems(
             @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
-            @RequestParam String text) {
+            @RequestParam String text,
+            @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
+            @RequestParam(required = false) @Positive Integer size) {
 
-        return ResponseEntity.ok(itemService.searchAvailableItems(ownerId, text));
+        return ResponseEntity.ok(itemService.searchAvailableItems(ownerId, text, from, size));
     }
 
     /**

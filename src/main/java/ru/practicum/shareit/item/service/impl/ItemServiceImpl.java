@@ -2,6 +2,7 @@ package ru.practicum.shareit.item.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.dto.BookingDtoShort;
@@ -20,9 +21,12 @@ import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.item.service.ActualItemBooking;
 import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.item.service.UpdatedItemFields;
+import ru.practicum.shareit.request.model.ItemRequest;
+import ru.practicum.shareit.request.service.ItemRequestService;
 import ru.practicum.shareit.user.service.UserService;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,18 +36,30 @@ import static ru.practicum.shareit.item.service.ActualItemBooking.NEXT;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class ItemServiceImpl implements ItemService {
 
     private final ItemRepository itemRepository;
     private final CommentRepository commentRepository;
     private final BookingService bookingService;
     private final UserService userService;
+    private final ItemRequestService requestService;
     private final ItemMapper itemMapper;
     private final CommentMapper commentMapper;
 
     @Override
     public ItemDto addItem(ItemDto itemDto, long ownerId) {
-        Item item = itemMapper.mapToModel(itemDto, userService.getUser(ownerId));
+        Item item;
+        ItemRequest request;
+        Long requestId = itemDto.getRequestId();
+
+        if (requestId != null) {
+            request = requestService.getRequest(requestId);
+        } else {
+            request = null;
+        }
+
+        item = itemMapper.mapToModel(itemDto, userService.getUser(ownerId), request);
         item.setId(null);
         item = itemRepository.save(item);
 
@@ -52,7 +68,6 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @Transactional
     public ItemDto getItemDto(long id, long requesterId) {
         Item item = this.getItem(id);
         Map<ActualItemBooking, BookingDtoShort> lastAndNextBooking =
@@ -76,27 +91,40 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public Collection<ItemDto> getOwnerItems(long ownerId) {
+    public Collection<ItemDto> getOwnerItems(long ownerId,  int startingIndex, Integer collectionSize) {
+        if (collectionSize == null) {
+            collectionSize = Integer.MAX_VALUE;
+        }
 
-        return itemRepository.findAllByOwnerId(ownerId).stream()
+        return itemRepository.findAllByOwnerId(
+                ownerId, Pageable.ofSize(startingIndex + collectionSize)).stream()
+                .sorted(Comparator.comparing(Item::getId))
+                .skip(startingIndex)
                 .map(item -> {
                     Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap =
                             bookingService.getLastAndNextBookingByItem(item, ownerId);
                     return itemMapper.mapToDto(item, itemDtoBookingsMap.get(LAST), itemDtoBookingsMap.get(NEXT));
                 })
-                .sorted(Comparator.comparing(ItemDto::getId))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public Collection<ItemDto> searchAvailableItems(long userId, String text) {
+    public Collection<ItemDto> searchAvailableItems(
+            long userId, String text,  int startingIndex, Integer collectionSize) {
+        if (collectionSize == null) {
+            collectionSize = Integer.MAX_VALUE;
+        }
+
         if (!text.isEmpty()) {
-            return itemRepository.searchAvailableItemsByNameAndDescription(text).stream()
+            return itemRepository.searchAvailableItemsByNameAndDescription(
+                    text, Pageable.ofSize(startingIndex + collectionSize)).stream()
+                    .sorted(Comparator.comparing(Item::getId))
+                    .skip(startingIndex)
                     .map(item -> {
-                        Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap = bookingService.getLastAndNextBookingByItem(item, userId);
+                        Map<ActualItemBooking, BookingDtoShort> itemDtoBookingsMap = bookingService
+                                .getLastAndNextBookingByItem(item, userId);
                         return itemMapper.mapToDto(item, itemDtoBookingsMap.get(LAST), itemDtoBookingsMap.get(NEXT));
                     })
-                    .sorted(Comparator.comparing(ItemDto::getId))
                     .collect(Collectors.toList());
         } else return List.of();
     }
@@ -133,7 +161,7 @@ public class ItemServiceImpl implements ItemService {
             throw new EmptyItemPatchRequestException("Ошибка обновления вещи: в запросе все поля равны null.");
         }
 
-        item = itemMapper.mapToModel(itemDto, userService.getUser(ownerId));
+        item = itemMapper.mapToModel(itemDto, userService.getUser(ownerId), null);
         item.setId(itemId);
         item = itemRepository.updateItem(item, targetFields);
         itemDtoBookingsMap = bookingService.getLastAndNextBookingByItem(item, ownerId);
@@ -144,14 +172,14 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public CommentDto addComment(CommentDto commentDto, long authorId, long itemId) {
-        if (!bookingService.isCommentMadeAfterBooking(authorId, itemId)) {
+        if (bookingService.neverMadeBookings(authorId, itemId)) {
             throw new CommenterDontHaveBookingException(String.format("Ошибка при добавлении комментария: " +
                     "пользователь с id=%d не оформлял бронирований вещи с id=%d.", authorId, itemId));
         }
 
         Comment comment = commentMapper.mapToModel(
                 commentDto, userService.getUser(authorId), this.getItem(itemId));
-        comment.setCreated(LocalDateTime.now());
+        comment.setCreated(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
         comment = commentRepository.save(comment);
 
         log.debug("Добавлен комментарий: {}", comment);

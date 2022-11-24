@@ -4,7 +4,8 @@ import lombok.AllArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
 import ru.practicum.shareit.item.model.Item;
@@ -15,7 +16,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
+@DataJpaTest
 @AllArgsConstructor(onConstructor_ = @Autowired)
 @AutoConfigureTestDatabase
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
@@ -44,14 +45,14 @@ public class ItemRepositoryTest {
         User user1 = userRepository.save(makeDefaultUser());
         Item item1 = itemRepository.save(makeDefaultItem(user1));
         assertTrue(itemRepository.existsItemByIdAndAvailableIsTrue(item1.getId()));
-        assertEquals(List.of(item1), itemRepository.findAllByOwnerId(user1.getId()));
+        assertEquals(List.of(item1), itemRepository.findAllByOwnerId(user1.getId(), Pageable.unpaged()).getContent());
 
         User user2 = makeDefaultUser();
         user2.setEmail("new@mail.ru");
         user2 = userRepository.save(user2);
         Item item2 = makeDefaultItem(user2);
         item2 = itemRepository.save(item2);
-        assertEquals(List.of(item2), itemRepository.findAllByOwnerId(user2.getId()));
+        assertEquals(List.of(item2), itemRepository.findAllByOwnerId(user2.getId(), Pageable.unpaged()).getContent());
     }
 
     @Test
@@ -76,7 +77,8 @@ public class ItemRepositoryTest {
         item3.setAvailable(false);
         itemRepository.save(item3);
 
-        assertEquals(List.of(item1, item2), itemRepository.searchAvailableItemsByNameAndDescription("debUgger"));
+        assertEquals(List.of(item1, item2), itemRepository.searchAvailableItemsByNameAndDescription(
+                "debUgger", Pageable.unpaged()).getContent());
     }
 
     @Test
@@ -85,10 +87,10 @@ public class ItemRepositoryTest {
         long userId = user.getId();
         Item item1 = itemRepository.save(makeDefaultItem(user));
         Item item2 = itemRepository.save(makeDefaultItem(user));
-        assertEquals(List.of(item1, item2), itemRepository.findAllByOwnerId(userId));
+        assertEquals(List.of(item1, item2), itemRepository.findAllByOwnerId(userId, Pageable.unpaged()).getContent());
 
         itemRepository.deleteAllByOwner(user);
-        assertEquals(List.of(), itemRepository.findAllByOwnerId(userId));
+        assertEquals(List.of(), itemRepository.findAllByOwnerId(userId, Pageable.unpaged()).getContent());
     }
 
     private Item makeDefaultItem(User owner) {

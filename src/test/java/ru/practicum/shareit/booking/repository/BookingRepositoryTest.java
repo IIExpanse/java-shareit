@@ -4,7 +4,8 @@ import lombok.AllArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
 import ru.practicum.shareit.booking.model.Booking;
@@ -19,7 +20,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@SpringBootTest
+@DataJpaTest
 @AllArgsConstructor(onConstructor_ = @Autowired)
 @AutoConfigureTestDatabase
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
@@ -45,7 +46,7 @@ public class BookingRepositoryTest {
         futureBooking.setEndTime(futureBooking.getEndTime().plusMonths(1));
         futureBooking = bookingRepository.save(futureBooking);
         assertEquals(List.of(futureBooking), bookingRepository.getAllByBookerIdOrItemOwnerIdOrderByStartTimeDesc(
-                booker.getId(), null));
+                booker.getId(), null, Pageable.unpaged()).getContent());
 
         User owner2 = makeDefaultUser();
         owner2.setEmail("another@mail.com");
@@ -56,7 +57,8 @@ public class BookingRepositoryTest {
         Booking currentBooking = makeDefaultBooking(item2, booker);
         currentBooking = bookingRepository.save(currentBooking);
         assertEquals(List.of(futureBooking, currentBooking),
-                bookingRepository.getAllByBookerIdOrItemOwnerIdOrderByStartTimeDesc(booker.getId(), null));
+                bookingRepository.getAllByBookerIdOrItemOwnerIdOrderByStartTimeDesc(
+                        booker.getId(), null, Pageable.unpaged()).getContent());
     }
 
     @Test
@@ -74,7 +76,7 @@ public class BookingRepositoryTest {
         preApprovedBooking = bookingRepository.save(preApprovedBooking);
         assertEquals(List.of(preApprovedBooking),
                 bookingRepository.getWaitingOrRejectedBookings(
-                        booker.getId(), null, true));
+                        booker.getId(), null, true, Pageable.unpaged()).getContent());
 
         User owner2 = makeDefaultUser();
         owner2.setEmail("another@mail.com");
@@ -87,7 +89,7 @@ public class BookingRepositoryTest {
         preRejectedBooking = bookingRepository.save(preRejectedBooking);
         assertEquals(List.of(preRejectedBooking),
                 bookingRepository.getWaitingOrRejectedBookings(
-                        booker.getId(), null, false));
+                        booker.getId(), null, false, Pageable.unpaged()).getContent());
     }
 
     @Test
@@ -105,7 +107,8 @@ public class BookingRepositoryTest {
         pastBooking.setStartTime(pastBooking.getStartTime().minusMonths(1));
         pastBooking.setEndTime(pastBooking.getEndTime().minusMonths(1));
         pastBooking = bookingRepository.save(pastBooking);
-        assertEquals(List.of(pastBooking), bookingRepository.getPastBookingsByBookerIdOrOwnerId(booker.getId(), null));
+        assertEquals(List.of(pastBooking), bookingRepository.getPastBookingsByBookerIdOrOwnerId(
+                booker.getId(), null, Pageable.unpaged()).getContent());
 
         User owner2 = makeDefaultUser();
         owner2.setEmail("another@mail.com");
@@ -117,7 +120,8 @@ public class BookingRepositoryTest {
         currentBooking.setApproved(true);
         bookingRepository.save(currentBooking);
         assertEquals(List.of(pastBooking),
-                bookingRepository.getPastBookingsByBookerIdOrOwnerId(booker.getId(), null));
+                bookingRepository.getPastBookingsByBookerIdOrOwnerId(
+                        booker.getId(), null, Pageable.unpaged()).getContent());
     }
 
     @Test
@@ -135,7 +139,8 @@ public class BookingRepositoryTest {
         pastBooking.setStartTime(pastBooking.getStartTime().minusMonths(1));
         pastBooking.setEndTime(pastBooking.getEndTime().minusMonths(1));
         bookingRepository.save(pastBooking);
-        assertEquals(List.of(), bookingRepository.getCurrentBookings(booker.getId(), null));
+        assertEquals(List.of(), bookingRepository.getCurrentBookings(
+                booker.getId(), null, Pageable.unpaged()).getContent());
 
         User owner2 = makeDefaultUser();
         owner2.setEmail("another@mail.com");
@@ -148,7 +153,8 @@ public class BookingRepositoryTest {
         currentBooking.setStartTime(LocalDateTime.now().minusSeconds(1));
         currentBooking = bookingRepository.save(currentBooking);
         assertEquals(List.of(currentBooking),
-                bookingRepository.getCurrentBookings(booker.getId(), null));
+                bookingRepository.getCurrentBookings(
+                        booker.getId(), null, Pageable.unpaged()).getContent());
     }
 
     @Test
