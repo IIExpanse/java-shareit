@@ -26,7 +26,7 @@ public class ItemRequestController {
      * @throws UserNotFoundException - если пользователя с указанным id не существует.
      */
     @PostMapping
-    public ResponseEntity<ItemRequestDto> addItemRequest(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
+    public ResponseEntity<ItemRequestDto> addItemRequest(@RequestHeader(name = "X-Sharer-User-Id") Long requesterId,
                                                          @RequestBody ItemRequestDto requestDto) {
         return ResponseEntity.ok(service.addRequest(requestDto, requesterId));
     }
@@ -41,8 +41,8 @@ public class ItemRequestController {
      * @throws RequestNotFoundException - если запроса с указанным id не существует.
      */
     @GetMapping(path = "/{requestId}")
-    public ResponseEntity<ItemRequestDto> getItemRequest(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
-                                                         @PathVariable long requestId) {
+    public ResponseEntity<ItemRequestDto> getItemRequest(@RequestHeader(name = "X-Sharer-User-Id") Long requesterId,
+                                                         @PathVariable Long requestId) {
         return ResponseEntity.ok(service.getRequestDto(requestId, requesterId));
     }
 
@@ -55,7 +55,7 @@ public class ItemRequestController {
      */
     @GetMapping
     public ResponseEntity<Collection<ItemRequestDto>> getOwnItemRequests(
-            @RequestHeader(name = "X-Sharer-User-Id") long requesterId) {
+            @RequestHeader(name = "X-Sharer-User-Id") Long requesterId) {
 
         return ResponseEntity.ok(service.getOwnItemRequests(requesterId));
     }
@@ -72,9 +72,9 @@ public class ItemRequestController {
      */
     @GetMapping(path = "/all")
     public ResponseEntity<Collection<ItemRequestDto>> getOtherUsersRequests(
-            @RequestHeader(name = "X-Sharer-User-Id") long requesterId,
-            @RequestParam int from,
-            @RequestParam int size) {
+            @RequestHeader(name = "X-Sharer-User-Id") Long requesterId,
+            @RequestParam Integer from,
+            @RequestParam Integer size) {
 
         return ResponseEntity.ok(service.getOtherUsersRequests(requesterId, from, size));
     }

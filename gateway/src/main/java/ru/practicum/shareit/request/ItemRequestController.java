@@ -22,7 +22,7 @@ public class ItemRequestController {
     private final RequestClient requestClient;
 
     @PostMapping
-    public ResponseEntity<Object> addItemRequest(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
+    public ResponseEntity<Object> addItemRequest(@RequestHeader(name = "X-Sharer-User-Id") Long requesterId,
                                                  @RequestBody @Valid ItemRequestDto requestDto) {
 
         log.info("Creating itemRequest {}, requesterId={}", requestDto, requesterId);
@@ -30,8 +30,8 @@ public class ItemRequestController {
     }
 
     @GetMapping(path = "/{requestId}")
-    public ResponseEntity<Object> getItemRequest(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
-                                                 @PathVariable long requestId) {
+    public ResponseEntity<Object> getItemRequest(@RequestHeader(name = "X-Sharer-User-Id") Long requesterId,
+                                                 @PathVariable Long requestId) {
 
         log.info("Get itemRequest, requesterId={}, requestId={}", requesterId, requestId);
         return requestClient.getItemRequest(requesterId, requestId);
@@ -39,7 +39,7 @@ public class ItemRequestController {
 
     @GetMapping
     public ResponseEntity<Object> getOwnItemRequests(
-            @RequestHeader(name = "X-Sharer-User-Id") long requesterId) {
+            @RequestHeader(name = "X-Sharer-User-Id") Long requesterId) {
 
         log.info("Get user's itemRequests, requesterId={}", requesterId);
         return requestClient.getOwnItemRequests(requesterId);
@@ -47,9 +47,9 @@ public class ItemRequestController {
 
     @GetMapping(path = "/all")
     public ResponseEntity<Object> getOtherUsersRequests(
-            @RequestHeader(name = "X-Sharer-User-Id") long requesterId,
-            @RequestParam(defaultValue = "0") @PositiveOrZero int from,
-            @RequestParam(defaultValue = "10") @Positive int size) {
+            @RequestHeader(name = "X-Sharer-User-Id") Long requesterId,
+            @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
+            @RequestParam(defaultValue = "10") @Positive Integer size) {
 
         log.info("Get other users' itemRequests, requesterId={}, from={}, size={}", requesterId, from, size);
         return requestClient.getOtherUsersRequests(requesterId, from, size);

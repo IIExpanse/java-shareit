@@ -23,7 +23,7 @@ public class ItemController {
     private final ItemClient itemClient;
 
     @PostMapping
-    public ResponseEntity<Object> addItem(@RequestHeader(name = "X-Sharer-User-Id") long ownerId,
+    public ResponseEntity<Object> addItem(@RequestHeader(name = "X-Sharer-User-Id") Long ownerId,
                                           @RequestBody @Valid ItemDto itemDto) {
 
         log.info("Creating item {}, ownerId={}", itemDto, ownerId);
@@ -31,8 +31,8 @@ public class ItemController {
     }
 
     @PostMapping(path = "/{itemId}/comment")
-    public ResponseEntity<Object> addComment(@RequestHeader(name = "X-Sharer-User-Id") long authorId,
-                                             @PathVariable long itemId,
+    public ResponseEntity<Object> addComment(@RequestHeader(name = "X-Sharer-User-Id") Long authorId,
+                                             @PathVariable Long itemId,
                                              @RequestBody @Valid CommentDto commentDto) {
 
         log.info("Creating comment {}, authorId={}, itemId={}", commentDto, authorId, itemId);
@@ -40,8 +40,8 @@ public class ItemController {
     }
 
     @GetMapping(path = "/{id}")
-    public ResponseEntity<Object> getItem(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
-                                          @PathVariable long id) {
+    public ResponseEntity<Object> getItem(@RequestHeader(name = "X-Sharer-User-Id") Long requesterId,
+                                          @PathVariable Long id) {
 
         log.info("Get item, requesterId={}, itemId={}", requesterId, id);
         return itemClient.getItem(requesterId, id);
@@ -49,7 +49,7 @@ public class ItemController {
 
     @GetMapping
     public ResponseEntity<Object> getOwnerItems(
-            @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
+            @RequestHeader(name = "X-Sharer-User-Id") Long ownerId,
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
             @RequestParam(defaultValue = "10") @Positive Integer size) {
 
@@ -59,18 +59,18 @@ public class ItemController {
 
     @GetMapping(path = "/search")
     public ResponseEntity<Object> searchAvailableItems(
-            @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
+            @RequestHeader(name = "X-Sharer-User-Id") Long ownerId,
             @RequestParam String text,
-            @RequestParam(defaultValue = "0") @PositiveOrZero int from,
-            @RequestParam(defaultValue = "10") @Positive int size) {
+            @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
+            @RequestParam(defaultValue = "10") @Positive Integer size) {
 
         log.info("Search items, ownerId={}, text={}, from={}, size={}", ownerId, text, from, size);
         return itemClient.searchAvailableItems(ownerId, text, from, size);
     }
 
     @PatchMapping(path = "/{itemId}")
-    public ResponseEntity<Object> updateItem(@RequestHeader(name = "X-Sharer-User-Id") long ownerId,
-                                             @PathVariable long itemId,
+    public ResponseEntity<Object> updateItem(@RequestHeader(name = "X-Sharer-User-Id") Long ownerId,
+                                             @PathVariable Long itemId,
                                              @RequestBody ItemDto itemDto) {
 
         log.info("Updating item {}, ownerId={}, itemId={}", itemDto, ownerId, itemId);

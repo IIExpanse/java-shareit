@@ -29,7 +29,7 @@ public class UserController {
     }
 
     @GetMapping(path = "/{id}")
-    public ResponseEntity<Object> getUser(@PathVariable long id) {
+    public ResponseEntity<Object> getUser(@PathVariable Long id) {
 
         log.info("Get user, userId={}", id);
         return userClient.getUser(id);
@@ -44,7 +44,7 @@ public class UserController {
 
     @PatchMapping(path = "/{id}")
     @Validated(value = UserValidationGroup.PatchValidation.class)
-    public ResponseEntity<Object> updateUser(@RequestBody @Valid UserDto userDto, @PathVariable long id) {
+    public ResponseEntity<Object> updateUser(@RequestBody @Valid UserDto userDto, @PathVariable Long id) {
 
         log.info("Updating user {}, id={}", userDto, id);
         return userClient.updateUser(userDto, id);
@@ -52,7 +52,7 @@ public class UserController {
 
     @DeleteMapping(path = "/{id}")
     @ResponseStatus(code = HttpStatus.OK)
-    public void deleteUser(@PathVariable long id) {
+    public void deleteUser(@PathVariable Long id) {
 
         log.info("Delete user, userId={}", id);
         userClient.deleteUser(id);

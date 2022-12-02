@@ -34,7 +34,7 @@ public class BookingController {
      * @throws UserNotFoundException               - если пользователя с указанным id не существует.
      */
     @PostMapping
-    public ResponseEntity<BookingDto> addBooking(@RequestHeader(name = "X-Sharer-User-Id") long bookerId,
+    public ResponseEntity<BookingDto> addBooking(@RequestHeader(name = "X-Sharer-User-Id") Long bookerId,
                                                  @RequestBody BookingDtoRequest bookingDtoRequest) {
 
         return new ResponseEntity<>(bookingService.addBooking(bookingDtoRequest, bookerId), HttpStatus.CREATED);
@@ -52,8 +52,8 @@ public class BookingController {
      * @throws UserNotFoundException             - если пользователя с указанным id не существует.
      */
     @GetMapping(path = "/{bookingId}")
-    public ResponseEntity<BookingDto> getBooking(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
-                                                 @PathVariable long bookingId) {
+    public ResponseEntity<BookingDto> getBooking(@RequestHeader(name = "X-Sharer-User-Id") Long requesterId,
+                                                 @PathVariable Long bookingId) {
         return ResponseEntity.ok(bookingService.getBookingDto(bookingId, requesterId));
     }
 
@@ -69,10 +69,10 @@ public class BookingController {
      */
     @GetMapping
     public ResponseEntity<Collection<BookingDto>> getBookingsByBookerAndStatus(
-            @RequestHeader(name = "X-Sharer-User-Id") long bookerId,
+            @RequestHeader(name = "X-Sharer-User-Id") Long bookerId,
             @RequestParam String state,
-            @RequestParam int from,
-            @RequestParam int size) {
+            @RequestParam Integer from,
+            @RequestParam Integer size) {
 
         return ResponseEntity.ok(bookingService.getBookingsByUserAndState(
                 bookerId, null, state, from, size));
@@ -90,10 +90,10 @@ public class BookingController {
      */
     @GetMapping(path = "/owner")
     public ResponseEntity<Collection<BookingDto>> getBookingsByOwnerAndStatus(
-            @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
+            @RequestHeader(name = "X-Sharer-User-Id") Long ownerId,
             @RequestParam String state,
-            @RequestParam int from,
-            @RequestParam int size) {
+            @RequestParam Integer from,
+            @RequestParam Integer size) {
 
         return ResponseEntity.ok(bookingService.getBookingsByUserAndState(
                 null, ownerId, state, from, size));
@@ -112,9 +112,9 @@ public class BookingController {
      * @throws WrongUserUpdatingBooking    - если попытка изменить статус исходит не от владельца.
      */
     @PatchMapping("/{bookingId}")
-    public ResponseEntity<BookingDto> setBookingApproval(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
-                                                         @PathVariable long bookingId,
-                                                         @RequestParam boolean approved) {
+    public ResponseEntity<BookingDto> setBookingApproval(@RequestHeader(name = "X-Sharer-User-Id") Long requesterId,
+                                                         @PathVariable Long bookingId,
+                                                         @RequestParam Boolean approved) {
 
         return ResponseEntity.ok(bookingService.setApproval(bookingId, approved, requesterId));
     }

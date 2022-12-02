@@ -45,7 +45,7 @@ public class UserController {
      * @throws UserNotFoundException - если пользователя с указанным id не существует в базе.
      */
     @GetMapping(path = "/{id}")
-    public ResponseEntity<UserDto> getUser(@PathVariable long id) {
+    public ResponseEntity<UserDto> getUser(@PathVariable Long id) {
         return ResponseEntity.ok(service.getUserDto(id));
     }
 
@@ -72,7 +72,7 @@ public class UserController {
      * @throws DuplicateEmailException        - при попытке заменить email на уже существующий в базе.
      */
     @PatchMapping(path = "/{id}")
-    public ResponseEntity<UserDto> updateUser(@RequestBody UserDto userDto, @PathVariable long id) {
+    public ResponseEntity<UserDto> updateUser(@RequestBody UserDto userDto, @PathVariable Long id) {
         return ResponseEntity.ok(service.updateUser(userDto, id));
     }
 
@@ -84,7 +84,7 @@ public class UserController {
      */
     @DeleteMapping(path = "/{id}")
     @ResponseStatus(code = HttpStatus.OK)
-    public void deleteUser(@PathVariable long id) {
+    public void deleteUser(@PathVariable Long id) {
         service.deleteUser(id);
     }
 }

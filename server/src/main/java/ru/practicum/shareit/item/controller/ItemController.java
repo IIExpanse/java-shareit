@@ -33,7 +33,7 @@ public class ItemController {
      * @throws UserNotFoundException - если владельца с указанным ownerId не существует.
      */
     @PostMapping
-    public ResponseEntity<ItemDto> addItem(@RequestHeader(name = "X-Sharer-User-Id") long ownerId,
+    public ResponseEntity<ItemDto> addItem(@RequestHeader(name = "X-Sharer-User-Id") Long ownerId,
                                            @RequestBody ItemDto itemDto) {
 
         return new ResponseEntity<>(itemService.addItem(itemDto, ownerId), HttpStatus.CREATED);
@@ -51,8 +51,8 @@ public class ItemController {
      * @throws UserNotFoundException             - если комментатора с указанным id не существует.
      */
     @PostMapping(path = "/{itemId}/comment")
-    public ResponseEntity<CommentDto> addComment(@RequestHeader(name = "X-Sharer-User-Id") long authorId,
-                                                 @PathVariable long itemId,
+    public ResponseEntity<CommentDto> addComment(@RequestHeader(name = "X-Sharer-User-Id") Long authorId,
+                                                 @PathVariable Long itemId,
                                                  @RequestBody CommentDto commentDto) {
 
         return ResponseEntity.ok(itemService.addComment(commentDto, authorId, itemId));
@@ -67,8 +67,8 @@ public class ItemController {
      * @throws ItemNotFoundException - если вещь с указанным id не найдена.
      */
     @GetMapping(path = "/{id}")
-    public ResponseEntity<ItemDto> getItem(@RequestHeader(name = "X-Sharer-User-Id") long requesterId,
-                                           @PathVariable long id) {
+    public ResponseEntity<ItemDto> getItem(@RequestHeader(name = "X-Sharer-User-Id") Long requesterId,
+                                           @PathVariable Long id) {
         return ResponseEntity.ok(itemService.getItemDto(id, requesterId));
     }
 
@@ -80,9 +80,9 @@ public class ItemController {
      */
     @GetMapping
     public ResponseEntity<Collection<ItemDto>> getOwnerItems(
-            @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
-            @RequestParam int from,
-            @RequestParam int size) {
+            @RequestHeader(name = "X-Sharer-User-Id") Long ownerId,
+            @RequestParam Integer from,
+            @RequestParam Integer size) {
 
         return ResponseEntity.ok(itemService.getOwnerItems(ownerId, from, size));
     }
@@ -97,10 +97,10 @@ public class ItemController {
      */
     @GetMapping(path = "/search")
     public ResponseEntity<Collection<ItemDto>> searchAvailableItems(
-            @RequestHeader(name = "X-Sharer-User-Id") long ownerId,
+            @RequestHeader(name = "X-Sharer-User-Id") Long ownerId,
             @RequestParam String text,
-            @RequestParam int from,
-            @RequestParam int size) {
+            @RequestParam Integer from,
+            @RequestParam Integer size) {
 
         return ResponseEntity.ok(itemService.searchAvailableItems(ownerId, text, from, size));
     }
@@ -121,8 +121,8 @@ public class ItemController {
      *                                         не соответствует владельцу.
      */
     @PatchMapping(path = "/{itemId}")
-    public ResponseEntity<ItemDto> updateItem(@RequestHeader(name = "X-Sharer-User-Id") long ownerId,
-                                              @PathVariable long itemId,
+    public ResponseEntity<ItemDto> updateItem(@RequestHeader(name = "X-Sharer-User-Id") Long ownerId,
+                                              @PathVariable Long itemId,
                                               @RequestBody ItemDto itemDto) {
 
         return ResponseEntity.ok(itemService.updateItem(itemDto, itemId, ownerId));
